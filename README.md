@@ -60,18 +60,6 @@ curl http://localhost:11434/api/tags
 # Update --ollama-url parameter in scripts
 ```
 
-## Project Structure
-
-```
-ollama/
-├── index_qdrant.py      # Index documents into Qdrant
-├── query_qdrant.py      # Search and retrieve documents
-├── chat_rag.py          # RAG chat system
-├── docs_example/        # Example markdown documents
-├── articles_clean.json  # Example JSON data
-└── README.md           # This file
-```
-
 ## Usage
 
 ### 1. Indexing Documents
