@@ -1,0 +1,5 @@
+*.json
+*.sql
+env/
+test_*
+qdrant_storage/

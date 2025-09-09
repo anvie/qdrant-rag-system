@@ -1,0 +1,16 @@
+services:
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.32.6
+    command: ["--host", "0.0.0.0", "--port", "8080", "--scheme", "http"]
+    ports: ["8080:8080", "50051:50051"]
+    environment:
+      ENABLE_MODULES: "text2vec-ollama" # enable the Ollama integration
+      QUERY_DEFAULTS_LIMIT: "25"
+      GRPC_MAX_MESSAGE_SIZE: "104857600"
+      MODULES_CLIENT_TIMEOUT: "300s"
+      ASYNC_INDEXING: "true"
+    restart: on-failure:0
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+volumes:
+  weaviate_data:
