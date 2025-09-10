@@ -378,11 +378,17 @@ def read_json_files(directory_path: str, max_docs: Optional[int] = None) -> List
                     continue
 
                 # Ensure article_id is integer for consistent indexing
-                try:
-                    article_id = int(article_id)
-                except (ValueError, TypeError):
+                # try:
+                #     article_id = int(article_id)
+                # except (ValueError, TypeError):
+                #     print(
+                #         f"Warning: Invalid article_id '{article_id}' in {json_file}, skipping document"
+                #     )
+                #     continue
+
+                if article_id is None:
                     print(
-                        f"Warning: Invalid article_id '{article_id}' in {json_file}, skipping document"
+                        f"Warning: Missing article_id in {json_file}, skipping document"
                     )
                     continue
 
@@ -437,7 +443,7 @@ def main():
         "--batch-size",
         type=int,
         default=100,
-        help="Number of chunks to process in each batch",
+        help="Number of chunks to process in each batch. (defult=100)",
     )
     ap.add_argument(
         "--max-docs",
@@ -445,28 +451,34 @@ def main():
         help="Maximum number of documents to index (useful for testing)",
     )
     ap.add_argument(
-        "--chunk-size", type=int, default=150, help="Number of words per chunk"
+        "--chunk-size",
+        type=int,
+        default=150,
+        help="Number of words per chunk. (default=150)",
     )
     ap.add_argument(
         "--chunk-overlap",
         type=int,
         default=30,
-        help="Number of overlapping words between chunks",
+        help="Number of overlapping words between chunks. (default=30)",
     )
     ap.add_argument(
         "--max-chunks-per-article",
         type=int,
         default=10,
-        help="Maximum number of chunks per article",
+        help="Maximum number of chunks per article. (default=10)",
     )
     ap.add_argument(
-        "--workers", type=int, default=4, help="Number of concurrent embedding workers"
+        "--workers",
+        type=int,
+        default=4,
+        help="Number of concurrent embedding workers. (default=4)",
     )
     ap.add_argument(
         "--embedding-batch-size",
         type=int,
         default=20,
-        help="Number of texts to embed concurrently in each batch",
+        help="Number of texts to embed concurrently in each batch. (default=20)",
     )
     ap.add_argument(
         "--quiet", action="store_true", help="Reduce verbose logging during processing"
@@ -475,7 +487,7 @@ def main():
         "--connection-timeout",
         type=int,
         default=120,
-        help="HTTP timeout for embedding requests (seconds)",
+        help="HTTP timeout for embedding requests (seconds). (default=120)",
     )
     ap.add_argument(
         "--dry-run",
