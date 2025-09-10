@@ -4,6 +4,7 @@
   import Button from '../common/Button.svelte';
   import LoadingSpinner from '../common/LoadingSpinner.svelte';
   import StatsCard from './StatsCard.svelte';
+  import CreateCollectionModal from './CreateCollectionModal.svelte';
   import Icon from '@iconify/svelte';
   import { 
     collectionsStore,
@@ -26,6 +27,7 @@
   let selectedCollections = new Set<string>();
   let showDeleteConfirm = false;
   let collectionToDelete: string | null = null;
+  let showCreateModal = false;
 
   // Reactive filtering
   $: filteredCollections = searchQuery 
@@ -125,6 +127,15 @@
     );
   };
 
+  // Handle create collection
+  const openCreateModal = () => {
+    showCreateModal = true;
+  };
+
+  const closeCreateModal = () => {
+    showCreateModal = false;
+  };
+
   // Lifecycle hooks
   onMount(async () => {
     await collectionsActions.initialize();
@@ -220,6 +231,18 @@
           </Button>
         </div>
 
+        <!-- Create Collection -->
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={openCreateModal}
+          disabled={$operationInProgress !== null}
+          ariaLabel="Create new collection"
+        >
+          <Icon icon="material-symbols:add" class="w-4 h-4" />
+          Create Collection
+        </Button>
+
         <!-- Refresh -->
         <Button
           variant="ghost"
@@ -260,7 +283,7 @@
         </div>
         <h3 class="text-lg font-medium text-gray-900 mb-2">No Collections</h3>
         <p class="text-gray-600 mb-4">No collections found. Create your first collection to get started.</p>
-        <Button variant="primary">
+        <Button variant="primary" onClick={openCreateModal}>
           Create Collection
         </Button>
       </div>
@@ -409,3 +432,9 @@
     </div>
   </div>
 {/if}
+
+<!-- Create Collection Modal -->
+<CreateCollectionModal 
+  bind:show={showCreateModal} 
+  onClose={closeCreateModal} 
+/>

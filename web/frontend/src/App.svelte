@@ -1,36 +1,39 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  
+  import { onMount } from "svelte";
+
   // Layout components
-  import Navigation from './lib/components/layout/Navigation.svelte';
-  import NotificationToast from './lib/components/layout/NotificationToast.svelte';
-  
-  // Dashboard components  
-  import SystemStatus from './lib/components/dashboard/SystemStatus.svelte';
-  import CollectionsList from './lib/components/dashboard/CollectionsList.svelte';
-  import StatsCard from './lib/components/dashboard/StatsCard.svelte';
-  
+  import Navigation from "./lib/components/layout/Navigation.svelte";
+  import NotificationToast from "./lib/components/layout/NotificationToast.svelte";
+
+  // Dashboard components
+  import SystemStatus from "./lib/components/dashboard/SystemStatus.svelte";
+  import CollectionsList from "./lib/components/dashboard/CollectionsList.svelte";
+  import StatsCard from "./lib/components/dashboard/StatsCard.svelte";
+
   // Common components
-  import Card from './lib/components/common/Card.svelte';
-  import Button from './lib/components/common/Button.svelte';
-  import LoadingSpinner from './lib/components/common/LoadingSpinner.svelte';
-  import Icon from '@iconify/svelte';
-  
+  import Card from "./lib/components/common/Card.svelte";
+  import Button from "./lib/components/common/Button.svelte";
+  import LoadingSpinner from "./lib/components/common/LoadingSpinner.svelte";
+  import Icon from "@iconify/svelte";
+
   // Stores
-  import { collectionsStats } from './lib/stores/collections';
-  import { overallHealth, connectionStatus } from './lib/stores/system';
-  import { notificationActions } from './lib/stores/notifications';
+  import {
+    collectionsActions,
+    collectionsStats,
+  } from "./lib/stores/collections";
+  import { overallHealth, connectionStatus } from "./lib/stores/system";
+  import { notificationActions } from "./lib/stores/notifications";
 
   // App state
-  let currentPage: string = 'dashboard';
+  let currentPage: string = "dashboard";
   let sidebarCollapsed: boolean = false;
   let mobileMenuOpen: boolean = false;
-  
+
   // Responsive breakpoint handling
   let windowWidth: number = 0;
   $: isMobile = windowWidth < 768;
   $: isTablet = windowWidth >= 768 && windowWidth < 1024;
-  
+
   // Auto-collapse sidebar on mobile
   $: if (isMobile) {
     sidebarCollapsed = true;
@@ -63,20 +66,23 @@
 
   // Page titles
   const pageTitles: Record<string, string> = {
-    dashboard: 'Dashboard',
-    collections: 'Collections',
-    search: 'Search',
-    chat: 'Chat',
-    settings: 'Settings'
+    dashboard: "Dashboard",
+    collections: "Collections",
+    search: "Search",
+    chat: "Chat",
+    settings: "Settings",
   };
 
   // Initialize app
-  onMount(() => {
+  onMount(async () => {
+    await collectionsActions.initialize();
+    await collectionsActions.loadAllCollectionStats();
+
     // Welcome notification
     notificationActions.info(
-      'Welcome to Qdrant RAG System',
-      'Monitor your vector database and manage collections in real-time.',
-      3000
+      "Welcome to Qdrant RAG System",
+      "Monitor your vector database and manage collections in real-time.",
+      3000,
     );
   });
 </script>
@@ -86,16 +92,16 @@
 <div class="min-h-screen bg-gray-50 flex">
   <!-- Mobile Menu Backdrop -->
   {#if mobileMenuOpen && isMobile}
-    <div 
+    <div
       class="fixed inset-0 bg-black bg-opacity-50 z-40"
       on:click={closeMobileMenu}
-      on:keydown={(e) => e.key === 'Escape' && closeMobileMenu()}
+      on:keydown={(e) => e.key === "Escape" && closeMobileMenu()}
       tabindex="-1"
     ></div>
   {/if}
 
   <!-- Sidebar -->
-  <aside 
+  <aside
     class="
       {isMobile ? 'fixed' : 'relative'} 
       {isMobile && !mobileMenuOpen ? '-translate-x-full' : 'translate-x-0'}
@@ -103,7 +109,7 @@
       h-screen bg-white border-r border-gray-200 transition-all duration-300 ease-in-out z-50
     "
   >
-    <Navigation 
+    <Navigation
       collapsed={sidebarCollapsed && !isMobile}
       {currentPage}
       on:navigate={handleNavigation}
@@ -128,19 +134,19 @@
               <Icon icon="material-symbols:menu" class="w-5 h-5" />
             </Button>
           {/if}
-          
+
           <div>
             <h1 class="text-xl font-semibold text-gray-900">
-              {pageTitles[currentPage] || 'Dashboard'}
+              {pageTitles[currentPage] || "Dashboard"}
             </h1>
             <p class="text-sm text-gray-600 mt-0.5">
-              {#if currentPage === 'dashboard'}
+              {#if currentPage === "dashboard"}
                 System overview and real-time monitoring
-              {:else if currentPage === 'collections'}
+              {:else if currentPage === "collections"}
                 Manage your vector collections
-              {:else if currentPage === 'search'}
+              {:else if currentPage === "search"}
                 Search through your vectors
-              {:else if currentPage === 'chat'}
+              {:else if currentPage === "chat"}
                 RAG-powered chat interface
               {:else}
                 System configuration
@@ -152,10 +158,21 @@
         <!-- System Status Indicator -->
         <div class="flex items-center gap-3">
           <!-- Connection Status -->
-          <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100">
-            <div class="w-2 h-2 rounded-full {$connectionStatus.api && $connectionStatus.qdrant ? 'bg-green-500' : 'bg-red-500'}"></div>
+          <div
+            class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100"
+          >
+            <div
+              class="w-2 h-2 rounded-full {$connectionStatus.api &&
+              $connectionStatus.qdrant
+                ? 'bg-green-500'
+                : 'bg-red-500'}"
+            ></div>
             <span class="text-xs font-medium text-gray-700">
-              {$overallHealth === 'healthy' ? 'Online' : $overallHealth === 'partial' ? 'Partial' : 'Offline'}
+              {$overallHealth === "healthy"
+                ? "Online"
+                : $overallHealth === "partial"
+                  ? "Partial"
+                  : "Offline"}
             </span>
           </div>
 
@@ -174,7 +191,7 @@
 
     <!-- Page Content -->
     <main class="flex-1 overflow-auto p-4 sm:p-6">
-      {#if currentPage === 'dashboard'}
+      {#if currentPage === "dashboard"}
         <!-- Dashboard Page -->
         <div class="space-y-6">
           <!-- Overview Stats -->
@@ -186,9 +203,9 @@
               icon="material-symbols:view-list"
               color="blue"
               clickable={true}
-              onClick={() => currentPage = 'collections'}
+              onClick={() => (currentPage = "collections")}
             />
-            
+
             <StatsCard
               title="Active"
               value={$collectionsStats.activeCollections}
@@ -197,7 +214,7 @@
               color="green"
               trend="neutral"
             />
-            
+
             <StatsCard
               title="Total Points"
               value={$collectionsStats.totalPoints}
@@ -205,7 +222,7 @@
               icon="material-symbols:star"
               color="purple"
             />
-            
+
             <StatsCard
               title="Vectors"
               value={$collectionsStats.totalVectors}
@@ -219,81 +236,101 @@
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <!-- System Status -->
             <SystemStatus />
-            
+
             <!-- Quick Collections View -->
             <Card>
               <div slot="header" class="flex items-center justify-between">
-                <h3 class="text-lg font-medium text-gray-900">Recent Collections</h3>
+                <h3 class="text-lg font-medium text-gray-900">
+                  Recent Collections
+                </h3>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => currentPage = 'collections'}
+                  onClick={() => (currentPage = "collections")}
                 >
                   View All
-                  <Icon icon="material-symbols:chevron-right" class="w-4 h-4 ml-1" />
+                  <Icon
+                    icon="material-symbols:chevron-right"
+                    class="w-4 h-4 ml-1"
+                  />
                 </Button>
               </div>
-              
+
               <div class="text-center py-8 text-gray-500">
-                <Icon icon="material-symbols:view-list" class="w-12 h-12 mx-auto mb-4" />
+                <Icon
+                  icon="material-symbols:view-list"
+                  class="w-12 h-12 mx-auto mb-4"
+                />
                 <p>View collections in the Collections tab</p>
               </div>
             </Card>
           </div>
         </div>
-        
-      {:else if currentPage === 'collections'}
+      {:else if currentPage === "collections"}
         <!-- Collections Page -->
         <CollectionsList />
-        
-      {:else if currentPage === 'search'}
+      {:else if currentPage === "search"}
         <!-- Search Page (Placeholder) -->
         <Card>
           <div class="text-center py-12">
             <div class="text-blue-500 mb-4">
               <Icon icon="material-symbols:search" class="w-16 h-16 mx-auto" />
             </div>
-            <h3 class="text-xl font-medium text-gray-900 mb-2">Vector Search</h3>
+            <h3 class="text-xl font-medium text-gray-900 mb-2">
+              Vector Search
+            </h3>
             <p class="text-gray-600 mb-6 max-w-md mx-auto">
-              Search functionality will allow you to query your vector collections and find similar content.
+              Search functionality will allow you to query your vector
+              collections and find similar content.
             </p>
-            <div class="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+            <div
+              class="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+            >
               <Icon icon="material-symbols:schedule" class="w-4 h-4 mr-2" />
               Coming Soon
             </div>
           </div>
         </Card>
-        
-      {:else if currentPage === 'chat'}
+      {:else if currentPage === "chat"}
         <!-- Chat Page (Placeholder) -->
         <Card>
           <div class="text-center py-12">
             <div class="text-green-500 mb-4">
               <Icon icon="material-symbols:chat" class="w-16 h-16 mx-auto" />
             </div>
-            <h3 class="text-xl font-medium text-gray-900 mb-2">RAG Chat Interface</h3>
+            <h3 class="text-xl font-medium text-gray-900 mb-2">
+              RAG Chat Interface
+            </h3>
             <p class="text-gray-600 mb-6 max-w-md mx-auto">
-              Chat with your documents using retrieval-augmented generation powered by your vector collections.
+              Chat with your documents using retrieval-augmented generation
+              powered by your vector collections.
             </p>
-            <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+            <div
+              class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium"
+            >
               <Icon icon="material-symbols:schedule" class="w-4 h-4 mr-2" />
               Coming Soon
             </div>
           </div>
         </Card>
-        
       {:else}
         <!-- Settings Page (Placeholder) -->
         <Card>
           <div class="text-center py-12">
             <div class="text-gray-500 mb-4">
-              <Icon icon="material-symbols:settings" class="w-16 h-16 mx-auto" />
+              <Icon
+                icon="material-symbols:settings"
+                class="w-16 h-16 mx-auto"
+              />
             </div>
             <h3 class="text-xl font-medium text-gray-900 mb-2">Settings</h3>
             <p class="text-gray-600 mb-6 max-w-md mx-auto">
-              Configure system settings, manage connections, and customize your RAG system preferences.
+              Configure system settings, manage connections, and customize your
+              RAG system preferences.
             </p>
-            <div class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+            <div
+              class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-800 rounded-full text-sm font-medium"
+            >
               <Icon icon="material-symbols:schedule" class="w-4 h-4 mr-2" />
               Coming Soon
             </div>

@@ -260,10 +260,10 @@ def get_collection_stats(client: QdrantClient, collection_name: str) -> Dict[str
     try:
         info = client.get_collection(collection_name)
         return {
-            "points_count": info.points_count,
-            "vectors_count": info.vectors_count
+            "points_count": info.points_count or 0,
+            "vectors_count": info.vectors_count or 0
             if hasattr(info, "vectors_count")
-            else info.points_count,
+            else info.points_count or 0,
             "status": info.status.name
             if hasattr(info.status, "name")
             else str(info.status),

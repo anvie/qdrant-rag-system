@@ -3,10 +3,11 @@ Collections management endpoints
 """
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel
 import sys
 import os
+import traceback
 
 # Add parent directories to path to import existing modules
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../.."))
@@ -68,6 +69,7 @@ async def list_collections():
         return result
 
     except Exception as e:
+        traceback.print_exception(type(e), e, e.__traceback__)
         raise HTTPException(
             status_code=500, detail=f"Failed to list collections: {str(e)}"
         )
@@ -111,6 +113,7 @@ async def get_collection_statistics(collection_name: str):
     except HTTPException:
         raise
     except Exception as e:
+        traceback.print_exception(type(e), e, e.__traceback__)
         raise HTTPException(
             status_code=500, detail=f"Failed to get collection stats: {str(e)}"
         )

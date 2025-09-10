@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import requests
 import time
-from typing import Dict, Any, Optional
+from typing import Optional
 import sys
 import os
 
@@ -136,6 +136,7 @@ async def check_service_health(service_name: str, base_url: str) -> ServiceHealt
 async def get_available_models():
     """Get available models from Ollama."""
     try:
+        print("Fetching models from Ollama...", f"{settings.OLLAMA_URL}/api/tags")
         response = requests.get(f"{settings.OLLAMA_URL}/api/tags", timeout=10)
         if response.status_code == 200:
             data = response.json()

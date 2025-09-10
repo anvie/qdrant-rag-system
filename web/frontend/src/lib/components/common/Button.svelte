@@ -12,6 +12,10 @@
   export let icon: string | null = null;
   export let iconPosition: 'left' | 'right' = 'left';
   export let ariaLabel: string | undefined = undefined;
+  
+  // Allow custom class override
+  let className: string = '';
+  export { className as class };
 
   // Event handlers
   export let onClick: ((event: MouseEvent) => void) | undefined = undefined;
@@ -35,7 +39,7 @@
 
   $: widthClass = fullWidth ? 'w-full' : '';
   
-  $: buttonClasses = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${widthClass}`;
+  $: buttonClasses = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${widthClass} ${className}`;
 
   // Handle click events
   const handleClick = (event: MouseEvent) => {
