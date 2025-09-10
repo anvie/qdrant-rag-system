@@ -189,6 +189,7 @@ def create_chunk_objects(
                 "title": title,
                 "content": chunk,
                 "text": chunk_with_title,  # Combined text for embedding
+                "source": article.get("source", "unknown"),
             }
         )
 
@@ -301,6 +302,128 @@ def extract_title_from_markdown(content: str) -> Optional[str]:
     return None
 
 
+def read_json_files(directory_path: str, max_docs: Optional[int] = None) -> List[Dict]:
+    """
+    Read and parse JSON files from a directory.
+
+    Args:
+        directory_path: Path to directory containing JSON files
+        max_docs: Maximum number of documents to process
+
+    Returns:
+        List of document dictionaries with id, title, and content
+    """
+    documents = []
+    directory = Path(directory_path)
+
+    if not directory.exists():
+        raise FileNotFoundError(f"Directory not found: {directory_path}")
+
+    if not directory.is_dir():
+        raise ValueError(f"Path is not a directory: {directory_path}")
+
+    # Find all JSON files recursively
+    json_files = sorted(directory.rglob("*.json"))
+
+    if not json_files:
+        raise ValueError(f"No JSON files found in: {directory_path}")
+
+    print(f"Found {len(json_files)} JSON files in {directory_path}")
+
+    if max_docs:
+        # When max_docs is specified, we need to be careful since each JSON file
+        # can contain multiple documents
+        print(f"Will process up to {max_docs} documents total from JSON files")
+
+    total_processed_files = 0
+
+    for json_file in json_files:
+        if max_docs and len(documents) >= max_docs:
+            print(f"Reached maximum document limit ({max_docs}), stopping")
+            break
+
+        try:
+            # Read JSON file content
+            with open(json_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            # Handle both single objects and arrays
+            if isinstance(data, dict):
+                # Single JSON object
+                json_documents = [data]
+            elif isinstance(data, list):
+                # Array of JSON objects
+                json_documents = data
+            else:
+                print(
+                    f"Skipping {json_file}: Invalid JSON structure (not object or array)"
+                )
+                continue
+
+            file_doc_count = 0
+
+            for item in json_documents:
+                if max_docs and len(documents) >= max_docs:
+                    break
+
+                # Validate required fields
+                if not isinstance(item, dict):
+                    continue
+
+                article_id = item.get("article_id") or item.get("id")
+                title = item.get("title", "")
+                content = item.get("content", "")
+
+                if not article_id:
+                    continue
+
+                # Ensure article_id is integer for consistent indexing
+                try:
+                    article_id = int(article_id)
+                except (ValueError, TypeError):
+                    print(
+                        f"Warning: Invalid article_id '{article_id}' in {json_file}, skipping document"
+                    )
+                    continue
+
+                if not content.strip():
+                    continue
+
+                # Convert to consistent document format
+                doc = {
+                    "id": article_id,
+                    "title": title,
+                    "content": content,
+                    "file_path": str(json_file.relative_to(directory)),
+                    "category": json_file.parent.name
+                    if json_file.parent != directory
+                    else "root",
+                }
+
+                documents.append(doc)
+                file_doc_count += 1
+
+            total_processed_files += 1
+
+            if file_doc_count > 0:
+                if total_processed_files % 5 == 0 or total_processed_files == 1:
+                    print(
+                        f"Processed {total_processed_files}/{len(json_files)} files, {len(documents)} documents so far"
+                    )
+
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON file {json_file}: {e}")
+            continue
+        except Exception as e:
+            print(f"Error reading file {json_file}: {e}")
+            continue
+
+    print(
+        f"Successfully loaded {len(documents)} documents from {total_processed_files} JSON files"
+    )
+    return documents
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--qdrant-url", default="http://localhost:6333")
@@ -354,6 +477,11 @@ def main():
         default=120,
         help="HTTP timeout for embedding requests (seconds)",
     )
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Only scan and validate files without processing embeddings or uploading to Qdrant",
+    )
 
     # Create mutually exclusive group for input source
     input_group = ap.add_mutually_exclusive_group()
@@ -362,81 +490,153 @@ def main():
     )
     input_group.add_argument(
         "--scan-dir",
-        help="Directory path to scan for markdown files (overrides --json-file)",
+        help="Directory path to scan for markdown and JSON files (overrides --json-file)",
     )
 
     args = ap.parse_args()
 
-    client = QdrantClient(url=args.qdrant_url, timeout=60.0)
+    # In dry-run mode, skip Qdrant client connection
+    if not args.dry_run:
+        client = QdrantClient(url=args.qdrant_url, timeout=60.0)
+    else:
+        client = None
 
     try:
-        print(f"Connecting to Qdrant @ {args.qdrant_url} ...")
+        dim = 1024
+        if not args.dry_run:
+            print(f"Connecting to Qdrant @ {args.qdrant_url} ...")
 
-        # --- determine vector size first ---
-        print("Getting embedding dimension from Ollama ...")
-        probe_embedding = embed_one_ollama(
-            "dimension probe", args.model, args.ollama_url
-        )
-        dim = len(probe_embedding)
-        print(f"Embedding dimension = {dim}")
+            # --- determine vector size first ---
+            print("Getting embedding dimension from Ollama ...")
+            probe_embedding = embed_one_ollama(
+                "dimension probe", args.model, args.ollama_url
+            )
+            dim = len(probe_embedding)
+            print(f"Embedding dimension = {dim}")
+        else:
+            print(
+                "DRY RUN MODE: Skipping Qdrant connection and embedding dimension probe"
+            )
 
         # --- (re)create collection in a version-compatible way ---
-        print(f"Preparing collection '{args.collection}' ...")
-        if args.recreate:
-            try:
-                client.delete_collection(args.collection)
-                print(f"Deleted existing collection '{args.collection}'")
-            except Exception:
-                pass
+        if not args.dry_run:
+            if client is None:
+                raise RuntimeError("Qdrant client is not initialized")
+            print(f"Preparing collection '{args.collection}' ...")
+            if args.recreate:
+                try:
+                    client.delete_collection(args.collection)
+                    print(f"Deleted existing collection '{args.collection}'")
+                except Exception:
+                    pass
 
-        try:
-            client.create_collection(
-                collection_name=args.collection,
-                vectors_config=VectorParams(size=dim, distance=Distance.COSINE),
-            )
-            print(f"Created collection '{args.collection}'")
-            index_params = models.TextIndexParams(
-                type=models.TextIndexType.TEXT,
-                tokenizer=models.TokenizerType.WORD,
-                lowercase=True,
-                phrase_matching=True,
-            )
-            client.create_payload_index(
-                collection_name=args.collection,
-                field_name="article_id",
-                field_type=models.PayloadSchemaType.INTEGER,
-                field_schema=models.IntegerIndexParams(
-                    type=models.IntegerIndexType.INTEGER
-                ),
-            )
-            client.create_payload_index(
-                collection_name=args.collection,
-                field_name="title",
-                field_type=models.PayloadSchemaType.TEXT,
-                field_schema=index_params,
-            )
-            client.create_payload_index(
-                collection_name=args.collection,
-                field_name="content",
-                field_type=models.PayloadSchemaType.TEXT,
-                field_schema=index_params,
-            )
-        except Exception as e:
-            if "already exists" in str(e).lower():
-                print(f"Collection '{args.collection}' already exists, continuing...")
-            else:
-                raise
+            try:
+                client.create_collection(
+                    collection_name=args.collection,
+                    vectors_config=VectorParams(size=dim, distance=Distance.COSINE),
+                )
+                print(f"Created collection '{args.collection}'")
+                index_params = models.TextIndexParams(
+                    type=models.TextIndexType.TEXT,
+                    tokenizer=models.TokenizerType.WORD,
+                    lowercase=True,
+                    phrase_matching=True,
+                )
+                # Create payload index for article_id to enable fast filtering operations.
+                # This index is essential because article_id is frequently used for:
+                # - Filtering search results to specific articles
+                # - Retrieving all chunks belonging to an article
+                # - Hybrid search operations that filter by article
+                # Using KEYWORD type to handle both string and integer article_id values from JSON data
+                client.create_payload_index(
+                    collection_name=args.collection,
+                    field_name="article_id",
+                    field_type=models.PayloadSchemaType.KEYWORD,
+                )
+                client.create_payload_index(
+                    collection_name=args.collection,
+                    field_name="title",
+                    field_type=models.PayloadSchemaType.TEXT,
+                    field_schema=index_params,
+                )
+                client.create_payload_index(
+                    collection_name=args.collection,
+                    field_name="content",
+                    field_type=models.PayloadSchemaType.TEXT,
+                    field_schema=index_params,
+                )
+            except Exception as e:
+                if "already exists" in str(e).lower():
+                    print(
+                        f"Collection '{args.collection}' already exists, continuing..."
+                    )
+                else:
+                    raise
+        else:
+            print("DRY RUN MODE: Skipping collection preparation")
 
         # --- index articles as chunks in batches ---
         batch_points = []
         total_chunks_indexed = 0
         total_articles_processed = 0
 
-        # Load articles from either JSON file or markdown directory
+        # Load articles from either JSON file or markdown/JSON directory
         if args.scan_dir:
-            print(f"Scanning markdown files from {args.scan_dir} ...")
+            print(f"Scanning directory {args.scan_dir} for markdown and JSON files ...")
+            articles = []
+
             try:
-                articles = read_markdown_files(args.scan_dir, args.max_docs)
+                directory = Path(args.scan_dir)
+                if not directory.exists():
+                    raise FileNotFoundError(f"Directory not found: {args.scan_dir}")
+                if not directory.is_dir():
+                    raise ValueError(f"Path is not a directory: {args.scan_dir}")
+
+                # Find both markdown and JSON files
+                md_files = sorted(directory.rglob("*.md"))
+                json_files = sorted(directory.rglob("*.json"))
+
+                print(
+                    f"Found {len(md_files)} markdown files and {len(json_files)} JSON files"
+                )
+
+                # Read markdown files if present
+                if md_files:
+                    try:
+                        print("Processing markdown files...")
+                        md_articles = read_markdown_files(args.scan_dir, args.max_docs)
+                        articles.extend(md_articles)
+                        print(
+                            f"Loaded {len(md_articles)} documents from markdown files"
+                        )
+                    except Exception as e:
+                        print(f"Error reading markdown files: {e}")
+
+                # Read JSON files if present and we haven't reached max_docs
+                if json_files and (not args.max_docs or len(articles) < args.max_docs):
+                    try:
+                        print("Processing JSON files...")
+                        remaining_docs = (
+                            args.max_docs - len(articles) if args.max_docs else None
+                        )
+                        json_articles = read_json_files(args.scan_dir, remaining_docs)
+                        articles.extend(json_articles)
+                        print(f"Loaded {len(json_articles)} documents from JSON files")
+                    except Exception as e:
+                        print(f"Error reading JSON files: {e}")
+
+                if not articles:
+                    if not md_files and not json_files:
+                        raise ValueError(
+                            f"No markdown or JSON files found in: {args.scan_dir}"
+                        )
+                    else:
+                        raise ValueError(
+                            f"No valid documents could be loaded from: {args.scan_dir}"
+                        )
+
+                print(f"Total documents loaded: {len(articles)}")
+
             except (FileNotFoundError, ValueError) as e:
                 print(f"Error scanning directory: {e}", file=sys.stderr)
                 sys.exit(1)
@@ -474,6 +674,15 @@ def main():
             f"Performance settings: {args.workers} concurrent workers, {args.embedding_batch_size} texts per embedding batch"
         )
 
+        # Exit early in dry-run mode after validating file loading
+        if args.dry_run:
+            print("\n=== DRY RUN COMPLETE ===")
+            print(f"✓ Successfully validated {len(articles)} articles")
+            print("✓ File scanning and parsing completed successfully")
+            print("✓ All documents have required fields (id, title, content)")
+            print("\nTo process these files, run again without --dry-run")
+            return
+
         print("Phase 1: Creating chunks from articles...")
         all_chunks = []
 
@@ -491,6 +700,16 @@ def main():
             if not article_id:
                 if not args.quiet:
                     print(f"Skipping article at index {i}: missing id")
+                continue
+
+            # Ensure article_id is integer for consistent indexing
+            try:
+                article_id = int(article_id)
+            except (ValueError, TypeError):
+                if not args.quiet:
+                    print(
+                        f"Skipping article at index {i}: invalid article_id '{article_id}'"
+                    )
                 continue
 
             if not content:
@@ -638,7 +857,8 @@ def main():
         print("ERROR:", e, file=sys.stderr)
         sys.exit(1)
     finally:
-        client.close()
+        if client:
+            client.close()
 
 
 if __name__ == "__main__":
