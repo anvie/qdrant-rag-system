@@ -3,3 +3,5 @@
 env/
 test_*
 qdrant_storage/
+.env
+.env.*

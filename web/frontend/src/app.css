@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #f8fafc;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* Custom component styles */
+.card {
+  @apply bg-white rounded-lg shadow-md p-6;
+}
+
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md transition-colors;
+}
+
+.status-healthy {
+  @apply text-green-600 bg-green-100 px-2 py-1 rounded-full text-sm font-medium;
+}
+
+.status-unhealthy {
+  @apply text-red-600 bg-red-100 px-2 py-1 rounded-full text-sm font-medium;
+}
+
+.status-unknown {
+  @apply text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full text-sm font-medium;
+}
+
+/* Transitions */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
