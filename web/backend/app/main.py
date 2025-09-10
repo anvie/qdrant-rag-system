@@ -12,6 +12,7 @@ import logging
 
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from api.routes import router
@@ -88,7 +89,9 @@ async def system_websocket(websocket: WebSocket):
             # Send periodic system status updates
             await websocket.receive_text()
             # For now, just echo back
-            await websocket_manager.send_personal_message("System status update", client_id)
+            await websocket_manager.send_personal_message(
+                "System status update", client_id
+            )
     except WebSocketDisconnect:
         websocket_manager.disconnect(client_id)
         logger.info(f"System monitor disconnected")
@@ -103,7 +106,9 @@ async def collections_websocket(websocket: WebSocket):
         while True:
             await websocket.receive_text()
             # For now, just echo back
-            await websocket_manager.send_personal_message("Collections update", client_id)
+            await websocket_manager.send_personal_message(
+                "Collections update", client_id
+            )
     except WebSocketDisconnect:
         websocket_manager.disconnect(client_id)
         logger.info(f"Collections monitor disconnected")

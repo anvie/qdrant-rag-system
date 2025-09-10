@@ -10,7 +10,7 @@ import os
 import uuid
 
 # Add parent directories to path to import existing modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../.."))
 
 from app.core.config import settings
 
@@ -19,6 +19,7 @@ router = APIRouter()
 
 class IndexingJob(BaseModel):
     """Indexing job model."""
+
     id: str
     status: str
     progress: float
@@ -29,6 +30,7 @@ class IndexingJob(BaseModel):
 
 class IndexingRequest(BaseModel):
     """Indexing request model."""
+
     source_type: str  # "json" or "markdown"
     source_path: str
     collection_name: str = "articles"
@@ -42,20 +44,22 @@ async def start_indexing(request: IndexingRequest, background_tasks: BackgroundT
     """Start an indexing job."""
     try:
         job_id = str(uuid.uuid4())
-        
+
         # TODO: Implement indexing using existing index_qdrant.py logic
         # background_tasks.add_task(run_indexing_job, job_id, request)
-        
+
         return IndexingJob(
             id=job_id,
             status="running",
             progress=0.0,
             total_documents=0,
-            processed_documents=0
+            processed_documents=0,
         )
-        
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start indexing: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start indexing: {str(e)}"
+        )
 
 
 @router.get("/jobs", response_model=List[IndexingJob])
@@ -73,5 +77,5 @@ async def get_indexing_job(job_id: str):
         status="completed",
         progress=100.0,
         total_documents=0,
-        processed_documents=0
+        processed_documents=0,
     )

@@ -9,7 +9,7 @@ import sys
 import os
 
 # Add parent directories to path to import existing modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../.."))
 
 from app.core.config import settings
 
@@ -18,6 +18,7 @@ router = APIRouter()
 
 class Document(BaseModel):
     """Document model."""
+
     id: int
     title: str
     content: str
@@ -27,6 +28,7 @@ class Document(BaseModel):
 
 class DocumentChunk(BaseModel):
     """Document chunk model."""
+
     chunk_index: int
     content: str
     score: Optional[float] = None
@@ -42,9 +44,9 @@ async def get_document(document_id: int):
             title="Sample Document",
             content="Sample content",
             chunk_count=1,
-            collection="articles"
+            collection="articles",
         )
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get document: {str(e)}")
 
@@ -55,9 +57,11 @@ async def get_document_chunks(document_id: int):
     try:
         # TODO: Implement chunk retrieval using existing get_article_by_id logic
         return []
-        
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get document chunks: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get document chunks: {str(e)}"
+        )
 
 
 @router.post("/similar")

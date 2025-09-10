@@ -715,14 +715,14 @@ def main():
                 continue
 
             # Ensure article_id is integer for consistent indexing
-            try:
-                article_id = int(article_id)
-            except (ValueError, TypeError):
-                if not args.quiet:
-                    print(
-                        f"Skipping article at index {i}: invalid article_id '{article_id}'"
-                    )
-                continue
+            # try:
+            #     article_id = int(article_id)
+            # except (ValueError, TypeError):
+            #     if not args.quiet:
+            #         print(
+            #             f"Skipping article at index {i}: invalid article_id '{article_id}'"
+            #         )
+            #     continue
 
             if not content:
                 if not args.quiet:

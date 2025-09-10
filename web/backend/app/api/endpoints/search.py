@@ -9,7 +9,7 @@ import sys
 import os
 
 # Add parent directories to path to import existing modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../.."))
 
 from app.core.config import settings
 
@@ -18,6 +18,7 @@ router = APIRouter()
 
 class SearchRequest(BaseModel):
     """Search request model."""
+
     query: str
     limit: int = 10
     min_score: float = 0.0
@@ -27,6 +28,7 @@ class SearchRequest(BaseModel):
 
 class SearchResult(BaseModel):
     """Search result model."""
+
     id: int
     score: float
     title: str
@@ -41,7 +43,7 @@ async def search_documents(request: SearchRequest):
     try:
         # TODO: Implement search using existing query_qdrant.py logic
         return []
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 

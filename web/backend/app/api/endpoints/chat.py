@@ -9,7 +9,7 @@ import sys
 import os
 
 # Add parent directories to path to import existing modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../.."))
 
 from app.core.config import settings
 
@@ -18,6 +18,7 @@ router = APIRouter()
 
 class ChatMessage(BaseModel):
     """Chat message model."""
+
     role: str
     content: str
     timestamp: Optional[str] = None
@@ -25,6 +26,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     """Chat request model."""
+
     message: str
     session_id: Optional[str] = None
     model: str = "llama2"
@@ -33,6 +35,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     """Chat response model."""
+
     response: str
     session_id: str
     sources: List[dict] = []
@@ -46,9 +49,9 @@ async def send_message(request: ChatRequest):
         return ChatResponse(
             response="This is a placeholder response.",
             session_id=request.session_id or "default",
-            sources=[]
+            sources=[],
         )
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
 
