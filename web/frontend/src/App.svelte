@@ -31,9 +31,15 @@
 
   // URL routing helpers (defined first)
   const getPageFromHash = (): string => {
-    if (typeof window === 'undefined') return "dashboard";
+    if (typeof window === "undefined") return "dashboard";
     const hash = window.location.hash.slice(1); // Remove #
-    const validPages = ["dashboard", "collections", "search", "chat", "settings"];
+    const validPages = [
+      "dashboard",
+      "collections",
+      "search",
+      "chat",
+      "settings",
+    ];
     return validPages.includes(hash) ? hash : "dashboard";
   };
 
@@ -43,7 +49,7 @@
   let mobileMenuOpen: boolean = false;
 
   const updateHash = (page: string) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     if (page === "dashboard") {
       // Remove hash for dashboard (default page)
       window.location.hash = "";
@@ -121,13 +127,6 @@
   onMount(async () => {
     await collectionsActions.initialize();
     await collectionsActions.loadAllCollectionStats();
-
-    // Welcome notification
-    notificationActions.info(
-      "Welcome to Qdrant RAG System",
-      "Monitor your vector database and manage collections in real-time.",
-      3000,
-    );
   });
 </script>
 
@@ -320,7 +319,7 @@
         <div class="space-y-6">
           <!-- Search Interface -->
           <SearchInterface autoFocus={true} />
-          
+
           <!-- Search Results -->
           <SearchResults />
         </div>

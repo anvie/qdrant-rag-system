@@ -184,7 +184,7 @@ export const searchActions = {
         hybrid: filters.hybrid,
         fusion_method: filters.fusion_method,
         group_by_article: filters.group_by_article,
-        task_type: "search",
+        task_type: "qa",
       };
 
       const response = await api.search(searchRequest);
