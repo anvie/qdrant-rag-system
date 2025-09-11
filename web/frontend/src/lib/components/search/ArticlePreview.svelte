@@ -97,27 +97,27 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <Modal 
-  {isOpen} 
+  show={isOpen} 
   onClose={handleClose}
   size="xl"
-  showCloseButton={true}
+  title=""
+  showHeader={false}
 >
-  <div slot="header" class="flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <Icon icon="material-symbols:article" class="w-6 h-6 text-blue-600" />
-      <div>
-        <h2 class="text-xl font-semibold text-gray-900">
-          {$currentArticle?.title || 'Article Preview'}
-        </h2>
-        {#if $currentArticle}
+  <!-- Article Header -->
+  {#if $currentArticle && !$articleLoading}
+    <div class="flex items-center justify-between mb-6 pb-4 border-b">
+      <div class="flex items-center gap-3">
+        <Icon icon="material-symbols:article" class="w-6 h-6 text-blue-600" />
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">
+            {$currentArticle?.title || 'Article Preview'}
+          </h2>
           <p class="text-sm text-gray-600">
             Article {$currentArticle.article_id} • {totalChunks} chunks
           </p>
-        {/if}
+        </div>
       </div>
-    </div>
 
-    {#if $currentArticle && !$articleLoading}
       <div class="flex items-center gap-2">
         <Button
           variant="ghost"
@@ -127,9 +127,17 @@
         >
           <Icon icon="material-symbols:content-copy" class="w-4 h-4" />
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleClose}
+          title="Close"
+        >
+          <Icon icon="material-symbols:close" class="w-4 h-4" />
+        </Button>
       </div>
-    {/if}
-  </div>
+    </div>
+  {/if}
 
   <!-- Loading State -->
   {#if $articleLoading}
