@@ -58,6 +58,45 @@ export interface ModelsResponse {
   total_models: number;
 }
 
+export interface SearchRequest {
+  query: string;
+  collection?: string;
+  limit?: number;
+  min_score?: number;
+  hybrid?: boolean;
+  fusion_method?: string;
+  article_id?: number;
+  group_by_article?: boolean;
+}
+
+export interface SearchResult {
+  id: number;
+  score: number;
+  article_id: number;
+  chunk_index: number;
+  title: string;
+  content: string;
+  text: string;
+}
+
+export interface SearchResponse {
+  results: SearchResult[];
+  total_found: number;
+  query_time: number;
+  collection: string;
+  query: string;
+  hybrid: boolean;
+  fusion_method?: string;
+  grouped_by_article: boolean;
+}
+
+export interface ArticleResponse {
+  article_id: number;
+  title: string;
+  chunks: SearchResult[];
+  total_chunks: number;
+}
+
 class ApiService {
   private client: AxiosInstance;
 
@@ -137,6 +176,27 @@ class ApiService {
 
   async deleteCollection(collectionName: string): Promise<{ message: string }> {
     const response = await this.client.delete(`/collections/${collectionName}`);
+    return response.data;
+  }
+
+  // Search endpoints
+  async search(request: SearchRequest): Promise<SearchResponse> {
+    const response = await this.client.post<SearchResponse>('/search/', request);
+    return response.data;
+  }
+
+  async getArticle(articleId: number, collection: string = 'articles'): Promise<ArticleResponse> {
+    const response = await this.client.get<ArticleResponse>(`/search/article/${articleId}?collection=${collection}`);
+    return response.data;
+  }
+
+  async findSimilar(documentId: number, collection: string = 'articles', limit: number = 10): Promise<SearchResponse> {
+    const response = await this.client.post<SearchResponse>(`/search/similar?document_id=${documentId}&collection=${collection}&limit=${limit}`);
+    return response.data;
+  }
+
+  async getSearchHistory(): Promise<{ history: any[] }> {
+    const response = await this.client.get<{ history: any[] }>('/search/history');
     return response.data;
   }
 

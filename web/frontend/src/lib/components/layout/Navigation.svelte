@@ -30,7 +30,6 @@
       label: "Search",
       icon: "material-symbols:search",
       description: "Search vectors",
-      disabled: true,
     },
     {
       id: "chat",

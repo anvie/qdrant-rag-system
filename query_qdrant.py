@@ -273,7 +273,7 @@ def get_collection_stats(client: QdrantClient, collection_name: str) -> Dict[str
 
 
 def get_article_by_id(
-    client: QdrantClient, collection_name: str, article_id: int
+    client: QdrantClient, collection_name: str, article_id: str
 ) -> List[Dict[str, Any]]:
     """
     Retrieve all chunks belonging to a specific article ID.

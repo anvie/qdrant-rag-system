@@ -10,6 +10,11 @@
   import CollectionsList from "./lib/components/dashboard/CollectionsList.svelte";
   import StatsCard from "./lib/components/dashboard/StatsCard.svelte";
 
+  // Search components
+  import SearchInterface from "./lib/components/search/SearchInterface.svelte";
+  import SearchResults from "./lib/components/search/SearchResults.svelte";
+  import ArticlePreview from "./lib/components/search/ArticlePreview.svelte";
+
   // Common components
   import Card from "./lib/components/common/Card.svelte";
   import Button from "./lib/components/common/Button.svelte";
@@ -94,9 +99,11 @@
   {#if mobileMenuOpen && isMobile}
     <div
       class="fixed inset-0 bg-black bg-opacity-50 z-40"
+      role="button"
       on:click={closeMobileMenu}
       on:keydown={(e) => e.key === "Escape" && closeMobileMenu()}
-      tabindex="-1"
+      tabindex="0"
+      aria-label="Close mobile menu"
     ></div>
   {/if}
 
@@ -270,27 +277,14 @@
         <!-- Collections Page -->
         <CollectionsList />
       {:else if currentPage === "search"}
-        <!-- Search Page (Placeholder) -->
-        <Card>
-          <div class="text-center py-12">
-            <div class="text-blue-500 mb-4">
-              <Icon icon="material-symbols:search" class="w-16 h-16 mx-auto" />
-            </div>
-            <h3 class="text-xl font-medium text-gray-900 mb-2">
-              Vector Search
-            </h3>
-            <p class="text-gray-600 mb-6 max-w-md mx-auto">
-              Search functionality will allow you to query your vector
-              collections and find similar content.
-            </p>
-            <div
-              class="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
-            >
-              <Icon icon="material-symbols:schedule" class="w-4 h-4 mr-2" />
-              Coming Soon
-            </div>
-          </div>
-        </Card>
+        <!-- Search Page -->
+        <div class="space-y-6">
+          <!-- Search Interface -->
+          <SearchInterface autoFocus={true} />
+          
+          <!-- Search Results -->
+          <SearchResults />
+        </div>
       {:else if currentPage === "chat"}
         <!-- Chat Page (Placeholder) -->
         <Card>
@@ -343,3 +337,6 @@
 
 <!-- Toast Notifications -->
 <NotificationToast />
+
+<!-- Article Preview Modal -->
+<ArticlePreview />
