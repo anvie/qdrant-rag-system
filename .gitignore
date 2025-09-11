@@ -5,3 +5,4 @@ test_*
 qdrant_storage/
 .env
 .env.*
+__pycache__

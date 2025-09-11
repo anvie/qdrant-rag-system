@@ -118,7 +118,7 @@ async def search_documents(request: SearchRequest):
                 SearchResult(
                     id=str(result["id"]),
                     score=result["score"],
-                    article_id=payload.get("article_id", 0),
+                    article_id=str(payload.get("article_id", 0)),
                     chunk_index=payload.get("chunk_index", 0),
                     title=payload.get("title", ""),
                     content=payload.get("content", ""),
@@ -194,7 +194,7 @@ async def get_full_article(article_id: str, collection: str = "articles"):
                 SearchResult(
                     id=str(chunk["id"]),
                     score=1.0,  # Full article retrieval, no scoring
-                    article_id=article_id,
+                    article_id=str(article_id),
                     chunk_index=payload.get("chunk_index", 0),
                     title=payload.get("title", ""),
                     content=payload.get("content", ""),
@@ -238,7 +238,7 @@ async def find_similar_documents(
                 SearchResult(
                     id=str(result["id"]),
                     score=result["score"],
-                    article_id=payload.get("article_id", 0),
+                    article_id=str(payload.get("article_id", 0)),
                     chunk_index=payload.get("chunk_index", 0),
                     title=payload.get("title", ""),
                     content=payload.get("content", ""),

@@ -208,7 +208,7 @@ class SearchService:
         )
 
     async def get_article(
-        self, collection: str, article_id: int
+        self, collection: str, article_id: str
     ) -> List[Dict[str, Any]]:
         """Get all chunks for a specific article."""
         return await self._run_sync_in_thread(

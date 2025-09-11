@@ -6,6 +6,9 @@
   export let collapsed: boolean = false;
   export let currentPage: string = "dashboard";
 
+  // Debug logging
+  $: console.log("📍 Navigation.svelte - currentPage prop received:", currentPage);
+
   const dispatch = createEventDispatcher<{
     navigate: { page: string };
     toggleSidebar: void;
@@ -60,8 +63,8 @@
     dispatch("toggleSidebar");
   };
 
-  // Get nav item classes
-  const getNavItemClasses = (itemId: string, disabled: boolean = false) => {
+  // Get nav item classes - make it reactive by recalculating when currentPage changes
+  $: getNavItemClasses = (itemId: string, disabled: boolean = false) => {
     const baseClasses =
       "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200";
 
@@ -69,7 +72,10 @@
       return `${baseClasses} text-gray-400 cursor-not-allowed`;
     }
 
-    if (currentPage === itemId) {
+    const isActive = currentPage === itemId;
+    console.log(`🎨 getNavItemClasses - item: ${itemId}, currentPage: ${currentPage}, isActive: ${isActive}`);
+
+    if (isActive) {
       return `${baseClasses} bg-blue-100 text-blue-700 border border-blue-200`;
     }
 

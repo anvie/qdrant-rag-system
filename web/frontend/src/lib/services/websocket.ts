@@ -30,7 +30,7 @@ class WebSocketService {
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
-          console.log(`WebSocket connected: ${endpoint}`);
+          // console.log(`WebSocket connected: ${endpoint}`);
           this.connections.set(endpoint, ws);
           this.reconnectAttempts.set(endpoint, 0);
 
@@ -51,11 +51,11 @@ class WebSocketService {
         };
 
         ws.onclose = (event) => {
-          console.log(
-            `WebSocket closed: ${endpoint}`,
-            event.code,
-            event.reason,
-          );
+          // console.log(
+          //   `WebSocket closed: ${endpoint}`,
+          //   event.code,
+          //   event.reason,
+          // );
           this.connections.delete(endpoint);
 
           // Attempt reconnection if not manual close

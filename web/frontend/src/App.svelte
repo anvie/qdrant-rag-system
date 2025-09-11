@@ -29,10 +29,34 @@
   import { overallHealth, connectionStatus } from "./lib/stores/system";
   import { notificationActions } from "./lib/stores/notifications";
 
-  // App state
-  let currentPage: string = "dashboard";
+  // URL routing helpers (defined first)
+  const getPageFromHash = (): string => {
+    if (typeof window === 'undefined') return "dashboard";
+    const hash = window.location.hash.slice(1); // Remove #
+    const validPages = ["dashboard", "collections", "search", "chat", "settings"];
+    return validPages.includes(hash) ? hash : "dashboard";
+  };
+
+  // App state - initialize currentPage from URL immediately
+  let currentPage: string = getPageFromHash();
   let sidebarCollapsed: boolean = false;
   let mobileMenuOpen: boolean = false;
+  
+  // Debug logging
+  $: console.log("🔍 App.svelte - currentPage changed to:", currentPage);
+  $: console.log("🌐 Current URL hash:", typeof window !== 'undefined' ? window.location.hash : 'SSR');
+
+  const updateHash = (page: string) => {
+    if (typeof window === 'undefined') return;
+    if (page === "dashboard") {
+      // Remove hash for dashboard (default page)
+      window.location.hash = "";
+    } else {
+      window.location.hash = page;
+    }
+  };
+
+  // URL sync is handled by onMount and hashchange events
 
   // Responsive breakpoint handling
   let windowWidth: number = 0;
@@ -47,9 +71,28 @@
 
   // Page navigation handler
   const handleNavigation = (event: CustomEvent<{ page: string }>) => {
-    currentPage = event.detail.page;
+    const page = event.detail.page;
+    currentPage = page;
+    updateHash(page);
     if (isMobile) {
       mobileMenuOpen = false;
+    }
+  };
+
+  // Direct navigation helper
+  const navigateToPage = (page: string) => {
+    currentPage = page;
+    updateHash(page);
+    if (isMobile) {
+      mobileMenuOpen = false;
+    }
+  };
+
+  // Handle hash change events (back/forward navigation)
+  const handleHashChange = () => {
+    const newPage = getPageFromHash();
+    if (newPage !== currentPage) {
+      currentPage = newPage;
     }
   };
 
@@ -80,6 +123,8 @@
 
   // Initialize app
   onMount(async () => {
+    console.log("🚀 onMount - currentPage already initialized to:", currentPage);
+    
     await collectionsActions.initialize();
     await collectionsActions.loadAllCollectionStats();
 
@@ -92,7 +137,7 @@
   });
 </script>
 
-<svelte:window bind:innerWidth={windowWidth} />
+<svelte:window bind:innerWidth={windowWidth} on:hashchange={handleHashChange} />
 
 <div class="min-h-screen bg-gray-50 flex">
   <!-- Mobile Menu Backdrop -->
@@ -210,7 +255,7 @@
               icon="material-symbols:view-list"
               color="blue"
               clickable={true}
-              onClick={() => (currentPage = "collections")}
+              onClick={() => navigateToPage("collections")}
             />
 
             <StatsCard
@@ -253,7 +298,7 @@
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => (currentPage = "collections")}
+                  onClick={() => navigateToPage("collections")}
                 >
                   View All
                   <Icon

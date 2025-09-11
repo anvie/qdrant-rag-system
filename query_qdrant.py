@@ -110,10 +110,18 @@ def search_qdrant_simple(
         search_params["query_filter"] = Filter(must=conditions)
 
     try:
-        results = client.search(**search_params)
+        # results = client.query_points(**search_params)
+        results = client.query_points(
+            collection_name=collection_name,
+            query=query_vector,
+            limit=limit,
+            with_payload=True,
+            score_threshold=min_score if min_score > 0 else None,
+        )
+
         return [
             {"id": result.id, "score": result.score, "payload": result.payload or {}}
-            for result in results
+            for result in results.points
         ]
     except Exception as e:
         raise RuntimeError(f"Simple search failed: {e}")
@@ -272,8 +280,8 @@ def get_collection_stats(client: QdrantClient, collection_name: str) -> Dict[str
         return {"error": str(e)}
 
 
-def get_article_by_id(
-    client: QdrantClient, collection_name: str, article_id: str
+def _get_article_by_id(
+    client: QdrantClient, collection_name: str, article_id: str | int
 ) -> List[Dict[str, Any]]:
     """
     Retrieve all chunks belonging to a specific article ID.
@@ -315,7 +323,16 @@ def get_article_by_id(
         raise RuntimeError(f"Failed to retrieve article {article_id}: {e}")
 
 
-def format_article_content(chunks: List[Dict[str, Any]], article_id: int) -> str:
+def get_article_by_id(client: QdrantClient, collection_name: str, article_id: str) -> List[Dict[str, Any]]:
+    rv = _get_article_by_id(client, collection_name, article_id)
+    if not rv:
+        # try to use integer article_id
+        rv = _get_article_by_id(client, collection_name, int(article_id))
+    return rv or []
+
+
+
+def format_article_content(chunks: List[Dict[str, Any]], article_id: str) -> str:
     """
     Format all chunks of an article into a readable display.
 
@@ -627,12 +644,13 @@ def interactive_mode(args) -> None:
                         print("   Example: read 146412")
                         continue
 
-                    try:
-                        article_id = int(parts[1])
-                    except ValueError:
-                        print(f"❌ Invalid article ID: {parts[1]}")
-                        print("   Article ID must be a number")
-                        continue
+                    # try:
+                    #     article_id = int(parts[1])
+                    # except ValueError:
+                    #     print(f"❌ Invalid article ID: {parts[1]}")
+                    #     print("   Article ID must be a number")
+                    #     continue
+                    article_id = parts[1]
 
                     # Retrieve and display article
                     client = QdrantClient(url=args.qdrant_url, timeout=60.0)
