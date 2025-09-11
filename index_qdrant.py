@@ -435,7 +435,7 @@ def main():
     ap.add_argument("--qdrant-url", default="http://localhost:6333")
     ap.add_argument("--collection", default="articles")
     ap.add_argument("--ollama-url", default="http://localhost:11434")
-    ap.add_argument("--model", default="embeddinggemma:latest")
+    ap.add_argument("--model", default="bge-m3:567m")
     ap.add_argument(
         "--recreate", action="store_true", help="Recreate collection from scratch"
     )
