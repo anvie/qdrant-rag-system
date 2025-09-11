@@ -714,9 +714,7 @@ Examples:
     parser.add_argument(
         "--ollama-url", default="http://localhost:11434", help="Ollama server URL"
     )
-    parser.add_argument(
-        "--model", default="bge-m3:567m", help="Ollama embedding model"
-    )
+    parser.add_argument("--model", default="bge-m3:567m", help="Ollama embedding model")
 
     # Search parameters
     parser.add_argument(

@@ -64,6 +64,12 @@
   const handleKeydown = (e: KeyboardEvent) => {
     if (!isOpen) return;
     
+    // Don't handle shortcuts if user is typing in an input/textarea
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+    
     switch (e.key) {
       case 'ArrowRight':
       case 'j':

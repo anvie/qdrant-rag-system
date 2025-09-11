@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # External Services
     QDRANT_URL: str = "http://localhost:6333"
     OLLAMA_URL: str = "http://localhost:11434"
+    EMBEDDING_MODEL: str = "bge-m3:567m"
 
     # Database (SQLite for now)
     DATABASE_URL: str = "sqlite:///./qdrant_web.db"

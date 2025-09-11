@@ -67,7 +67,7 @@
 
 <!-- Toast Container -->
 {#if $notifications.length > 0}
-  <div class="fixed top-4 right-4 z-50 space-y-3 w-full max-w-sm pointer-events-none">
+  <div class="fixed top-4 right-4 z-50 space-y-3 w-full max-w-md pointer-events-none">
     <!-- Dismiss All Button (when multiple notifications) -->
     {#if $notifications.length > 1}
       <div class="flex justify-end pointer-events-auto">
@@ -98,12 +98,12 @@
 
         <!-- Content -->
         <div class="flex-1 min-w-0">
-          <h4 class="text-sm font-medium">
+          <h4 class="text-sm font-medium break-words">
             {notification.title}
           </h4>
           
           {#if notification.message}
-            <p class="text-sm opacity-90 mt-1">
+            <p class="text-sm opacity-90 mt-1 break-words">
               {notification.message}
             </p>
           {/if}

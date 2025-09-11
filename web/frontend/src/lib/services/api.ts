@@ -2,10 +2,10 @@
  * API service for communicating with FastAPI backend
  */
 
-import axios from 'axios';
-import type { AxiosInstance, AxiosResponse } from 'axios';
+import axios from "axios";
+import type { AxiosInstance, AxiosResponse } from "axios";
 
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL = "/api/v1";
 
 export interface Collection {
   name: string;
@@ -105,20 +105,22 @@ class ApiService {
       baseURL: API_BASE_URL,
       timeout: 30000,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
 
     // Request interceptor
     this.client.interceptors.request.use(
       (config) => {
-        console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        console.log(
+          `API Request: ${config.method?.toUpperCase()} ${config.url}`,
+        );
         return config;
       },
       (error) => {
-        console.error('API Request Error:', error);
+        console.error("API Request Error:", error);
         return Promise.reject(error);
-      }
+      },
     );
 
     // Response interceptor
@@ -128,40 +130,42 @@ class ApiService {
         return response;
       },
       (error) => {
-        console.error('API Response Error:', error);
+        console.error("API Response Error:", error);
         if (error.response?.status === 401) {
           // Handle unauthorized access
-          console.warn('Unauthorized access - redirect to login');
+          console.warn("Unauthorized access - redirect to login");
         }
         return Promise.reject(error);
-      }
+      },
     );
   }
 
   // System endpoints
   async getSystemStatus(): Promise<SystemStatus> {
-    const response = await this.client.get<SystemStatus>('/system/status');
+    const response = await this.client.get<SystemStatus>("/system/status");
     return response.data;
   }
 
   async getHealth(): Promise<HealthResponse> {
-    const response = await this.client.get<HealthResponse>('/system/health');
+    const response = await this.client.get<HealthResponse>("/system/health");
     return response.data;
   }
 
   async getModels(): Promise<ModelsResponse> {
-    const response = await this.client.get<ModelsResponse>('/system/models');
+    const response = await this.client.get<ModelsResponse>("/system/models");
     return response.data;
   }
 
   // Collections endpoints
   async getCollections(): Promise<Collection[]> {
-    const response = await this.client.get<Collection[]>('/collections/');
+    const response = await this.client.get<Collection[]>("/collections/");
     return response.data;
   }
 
   async getCollectionStats(collectionName: string): Promise<CollectionStats> {
-    const response = await this.client.get<CollectionStats>(`/collections/${collectionName}/stats`);
+    const response = await this.client.get<CollectionStats>(
+      `/collections/${collectionName}/stats`,
+    );
     return response.data;
   }
 
@@ -170,7 +174,7 @@ class ApiService {
     vector_size: number;
     distance_metric?: string;
   }): Promise<Collection> {
-    const response = await this.client.post<Collection>('/collections/', data);
+    const response = await this.client.post<Collection>("/collections/", data);
     return response.data;
   }
 
@@ -181,22 +185,38 @@ class ApiService {
 
   // Search endpoints
   async search(request: SearchRequest): Promise<SearchResponse> {
-    const response = await this.client.post<SearchResponse>('/search/', request);
+    const response = await this.client.post<SearchResponse>(
+      "/search/",
+      request,
+    );
     return response.data;
   }
 
-  async getArticle(articleId: number, collection: string = 'articles'): Promise<ArticleResponse> {
-    const response = await this.client.get<ArticleResponse>(`/search/article/${articleId}?collection=${collection}`);
+  async getArticle(
+    articleId: number,
+    collection: string = "articles",
+  ): Promise<ArticleResponse> {
+    const response = await this.client.get<ArticleResponse>(
+      `/search/article/${articleId}?collection=${collection}`,
+    );
     return response.data;
   }
 
-  async findSimilar(documentId: number, collection: string = 'articles', limit: number = 10): Promise<SearchResponse> {
-    const response = await this.client.post<SearchResponse>(`/search/similar?document_id=${documentId}&collection=${collection}&limit=${limit}`);
+  async findSimilar(
+    documentId: number,
+    collection: string = "articles",
+    limit: number = 10,
+  ): Promise<SearchResponse> {
+    const response = await this.client.post<SearchResponse>(
+      `/search/similar?document_id=${documentId}&collection=${collection}&limit=${limit}`,
+    );
     return response.data;
   }
 
   async getSearchHistory(): Promise<{ history: any[] }> {
-    const response = await this.client.get<{ history: any[] }>('/search/history');
+    const response = await this.client.get<{ history: any[] }>(
+      "/search/history",
+    );
     return response.data;
   }
 

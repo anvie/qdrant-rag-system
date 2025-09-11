@@ -249,10 +249,24 @@
           <Icon icon="material-symbols:error" class="w-16 h-16 mx-auto" />
         </div>
         <h3 class="text-lg font-medium text-gray-900 mb-2">Search Error</h3>
-        <p class="text-gray-600 mb-4 max-w-md mx-auto">{$searchError}</p>
-        <Button variant="primary" onClick={() => searchActions.executeSearch()}>
-          Try Again
-        </Button>
+        <div class="mb-6">
+          <p class="text-gray-800 mb-2 max-w-md mx-auto font-medium">{$searchError}</p>
+          {#if $searchError.includes("doesn't exist")}
+            <p class="text-gray-600 text-sm max-w-md mx-auto">
+              Please select a different collection or create the collection first.
+            </p>
+          {/if}
+        </div>
+        <div class="flex gap-3 justify-center">
+          <Button variant="primary" onClick={() => searchActions.executeSearch()}>
+            Try Again
+          </Button>
+          {#if $searchError.includes("doesn't exist")}
+            <Button variant="ghost" onClick={() => searchActions.clearResults()}>
+              Clear Search
+            </Button>
+          {/if}
+        </div>
       </div>
     </Card>
 

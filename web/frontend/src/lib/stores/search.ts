@@ -2,9 +2,15 @@
  * Search store for managing search state and operations
  */
 
-import { writable, derived, get } from 'svelte/store';
-import { api, type SearchRequest, type SearchResponse, type SearchResult, type ArticleResponse } from '../services/api';
-import { notificationActions } from './notifications';
+import { writable, derived, get } from "svelte/store";
+import {
+  api,
+  type SearchRequest,
+  type SearchResponse,
+  type SearchResult,
+  type ArticleResponse,
+} from "../services/api";
+import { notificationActions } from "./notifications";
 
 export interface SearchFilters {
   collection: string;
@@ -28,18 +34,18 @@ export interface SearchState {
   // Query state
   query: string;
   filters: SearchFilters;
-  
+
   // Results state
   results: SearchResult[];
   currentResponse: SearchResponse | null;
-  
+
   // UI state
   loading: boolean;
   error: string | null;
-  
+
   // History and cache
   history: SearchHistoryItem[];
-  
+
   // Current article view
   currentArticle: ArticleResponse | null;
   articleLoading: boolean;
@@ -47,16 +53,16 @@ export interface SearchState {
 
 // Initial state
 const initialFilters: SearchFilters = {
-  collection: 'articles',
+  collection: "articles",
   limit: 10,
   min_score: 0.0,
   hybrid: false,
-  fusion_method: 'rrf',
-  group_by_article: false
+  fusion_method: "rrf",
+  group_by_article: false,
 };
 
 const initialState: SearchState = {
-  query: '',
+  query: "",
   filters: { ...initialFilters },
   results: [],
   currentResponse: null,
@@ -64,92 +70,109 @@ const initialState: SearchState = {
   error: null,
   history: [],
   currentArticle: null,
-  articleLoading: false
+  articleLoading: false,
 };
 
 // Create writable stores
 const searchState = writable<SearchState>(initialState);
 
 // Load search history from localStorage on init
-if (typeof window !== 'undefined') {
-  const savedHistory = localStorage.getItem('search_history');
+if (typeof window !== "undefined") {
+  const savedHistory = localStorage.getItem("search_history");
   if (savedHistory) {
     try {
       const history = JSON.parse(savedHistory);
-      searchState.update(state => ({ ...state, history }));
+      searchState.update((state) => ({ ...state, history }));
     } catch (e) {
-      console.warn('Failed to load search history from localStorage:', e);
+      console.warn("Failed to load search history from localStorage:", e);
     }
   }
 }
 
 // Derived stores
-export const searchQuery = derived(searchState, $state => $state.query);
-export const searchFilters = derived(searchState, $state => $state.filters);
-export const searchResults = derived(searchState, $state => $state.results);
-export const searchLoading = derived(searchState, $state => $state.loading);
-export const searchError = derived(searchState, $state => $state.error);
-export const searchHistory = derived(searchState, $state => $state.history);
-export const currentSearchResponse = derived(searchState, $state => $state.currentResponse);
-export const currentArticle = derived(searchState, $state => $state.currentArticle);
-export const articleLoading = derived(searchState, $state => $state.articleLoading);
+export const searchQuery = derived(searchState, ($state) => $state.query);
+export const searchFilters = derived(searchState, ($state) => $state.filters);
+export const searchResults = derived(searchState, ($state) => $state.results);
+export const searchLoading = derived(searchState, ($state) => $state.loading);
+export const searchError = derived(searchState, ($state) => $state.error);
+export const searchHistory = derived(searchState, ($state) => $state.history);
+export const currentSearchResponse = derived(
+  searchState,
+  ($state) => $state.currentResponse,
+);
+export const currentArticle = derived(
+  searchState,
+  ($state) => $state.currentArticle,
+);
+export const articleLoading = derived(
+  searchState,
+  ($state) => $state.articleLoading,
+);
 
 // Search statistics
-export const searchStats = derived(searchState, $state => ({
+export const searchStats = derived(searchState, ($state) => ({
   totalResults: $state.results.length,
-  uniqueArticles: new Set($state.results.map(r => r.article_id)).size,
-  avgScore: $state.results.length > 0 
-    ? $state.results.reduce((sum, r) => sum + r.score, 0) / $state.results.length 
-    : 0,
-  queryTime: $state.currentResponse?.query_time || 0
+  uniqueArticles: new Set($state.results.map((r) => r.article_id)).size,
+  avgScore:
+    $state.results.length > 0
+      ? $state.results.reduce((sum, r) => sum + r.score, 0) /
+        $state.results.length
+      : 0,
+  queryTime: $state.currentResponse?.query_time || 0,
 }));
 
 // Actions
 export const searchActions = {
   // Update query
   setQuery: (query: string) => {
-    searchState.update(state => ({ 
-      ...state, 
+    searchState.update((state) => ({
+      ...state,
       query,
-      error: null 
+      error: null,
     }));
   },
 
   // Update filters
   updateFilters: (newFilters: Partial<SearchFilters>) => {
-    searchState.update(state => ({
+    searchState.update((state) => ({
       ...state,
       filters: { ...state.filters, ...newFilters },
-      error: null
+      error: null,
     }));
   },
 
   // Reset filters to defaults
   resetFilters: () => {
-    searchState.update(state => ({
+    searchState.update((state) => ({
       ...state,
-      filters: { ...initialFilters }
+      filters: { ...initialFilters },
     }));
   },
 
   // Execute search
-  executeSearch: async (customQuery?: string, customFilters?: Partial<SearchFilters>) => {
+  executeSearch: async (
+    customQuery?: string,
+    customFilters?: Partial<SearchFilters>,
+  ) => {
     const currentState = get(searchState);
     const query = customQuery || currentState.query;
-    const filters = customFilters ? { ...currentState.filters, ...customFilters } : currentState.filters;
-
-    console.log('ExecuteSearch called with query:', query, 'filters:', filters);
+    const filters = customFilters
+      ? { ...currentState.filters, ...customFilters }
+      : currentState.filters;
 
     if (!query.trim()) {
-      notificationActions.error('Search query cannot be empty', 'Please enter a search term');
+      notificationActions.error(
+        "Search query cannot be empty",
+        "Please enter a search term",
+      );
       return;
     }
 
-    searchState.update(state => ({ 
-      ...state, 
-      loading: true, 
+    searchState.update((state) => ({
+      ...state,
+      loading: true,
       error: null,
-      results: []
+      results: [],
     }));
 
     try {
@@ -160,7 +183,7 @@ export const searchActions = {
         min_score: filters.min_score,
         hybrid: filters.hybrid,
         fusion_method: filters.fusion_method,
-        group_by_article: filters.group_by_article
+        group_by_article: filters.group_by_article,
       };
 
       const response = await api.search(searchRequest);
@@ -172,18 +195,18 @@ export const searchActions = {
         filters: { ...filters },
         timestamp: Date.now(),
         results_count: response.total_found,
-        query_time: response.query_time
+        query_time: response.query_time,
       };
 
-      searchState.update(state => {
+      searchState.update((state) => {
         const newHistory = [historyItem, ...state.history.slice(0, 49)]; // Keep last 50 searches
-        
+
         // Save to localStorage
-        if (typeof window !== 'undefined') {
+        if (typeof window !== "undefined") {
           try {
-            localStorage.setItem('search_history', JSON.stringify(newHistory));
+            localStorage.setItem("search_history", JSON.stringify(newHistory));
           } catch (e) {
-            console.warn('Failed to save search history to localStorage:', e);
+            console.warn("Failed to save search history to localStorage:", e);
           }
         }
 
@@ -194,144 +217,194 @@ export const searchActions = {
           currentResponse: response,
           history: newHistory,
           query,
-          filters
+          filters,
         };
       });
 
       notificationActions.success(
-        'Search completed',
-        `Found ${response.total_found} results in ${(response.query_time * 1000).toFixed(0)}ms`
+        "Search completed",
+        `Found ${response.total_found} results in ${(response.query_time * 1000).toFixed(0)}ms`,
       );
-
     } catch (error: any) {
-      console.error('Search failed:', error);
-      const errorMessage = error.response?.data?.detail || error.message || 'Search failed';
-      
-      searchState.update(state => ({ 
-        ...state, 
+      console.error("Search failed:", error);
+      let errorMessage =
+        error.response?.data?.detail || error.message || "Search failed";
+      console.log("Original error message:", errorMessage);
+
+      // Parse nested error messages from Qdrant
+      if (
+        errorMessage.includes("Collection") &&
+        errorMessage.includes("exist")
+      ) {
+        // Handle both 'doesn\'t exist' and 'doesn\\'t exist' patterns
+        const collectionMatch = errorMessage.match(/Collection `([^`]+)`/);
+        if (collectionMatch) {
+          const collectionName = collectionMatch[1];
+          errorMessage = `Collection "${collectionName}" doesn't exist. Please check if the collection name is correct.`;
+        }
+      } else if (errorMessage.includes("Not found:")) {
+        // Extract the actual error message from Qdrant response
+        const notFoundMatch = errorMessage.match(/Not found: (.+?)(?:\}|$)/);
+        if (notFoundMatch) {
+          let extracted = notFoundMatch[1].trim();
+          // Clean up escaped characters
+          extracted = extracted.replace(/\\'/g, "'").replace(/\\"/g, '"');
+          // Remove trailing backslashes
+          extracted = extracted.replace(/\\+$/, "");
+          errorMessage = extracted;
+        }
+      }
+
+      searchState.update((state) => ({
+        ...state,
         loading: false,
         error: errorMessage,
-        results: []
+        results: [],
       }));
 
-      notificationActions.error('Search failed', errorMessage);
+      // Show persistent error notification for important errors
+      if (
+        errorMessage.includes("doesn't exist") ||
+        errorMessage.includes("Not found")
+      ) {
+        notificationActions.error("Search Error", errorMessage, 10000); // 10 seconds
+      } else {
+        notificationActions.error("Search failed", errorMessage, 8000); // 8 seconds
+      }
     }
   },
 
   // Search from history
   searchFromHistory: (historyItem: SearchHistoryItem) => {
-    searchState.update(state => ({
+    searchState.update((state) => ({
       ...state,
       query: historyItem.query,
-      filters: historyItem.filters
+      filters: historyItem.filters,
     }));
-    
+
     searchActions.executeSearch(historyItem.query, historyItem.filters);
   },
 
   // Clear search results
   clearResults: () => {
-    searchState.update(state => ({
+    searchState.update((state) => ({
       ...state,
       results: [],
       currentResponse: null,
       error: null,
-      query: ''
+      query: "",
     }));
   },
 
   // Clear search history
   clearHistory: () => {
-    searchState.update(state => ({ ...state, history: [] }));
-    
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('search_history');
+    searchState.update((state) => ({ ...state, history: [] }));
+
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("search_history");
     }
-    
-    notificationActions.info('Search history cleared', 'All previous searches have been removed');
+
+    notificationActions.info(
+      "Search history cleared",
+      "All previous searches have been removed",
+    );
   },
 
   // Load full article
   loadArticle: async (articleId: number, collection?: string) => {
-    searchState.update(state => ({ 
-      ...state, 
+    searchState.update((state) => ({
+      ...state,
       articleLoading: true,
-      currentArticle: null
+      currentArticle: null,
     }));
 
     try {
       const article = await api.getArticle(articleId, collection);
-      
-      searchState.update(state => ({
+
+      searchState.update((state) => ({
         ...state,
         articleLoading: false,
-        currentArticle: article
+        currentArticle: article,
       }));
 
-      notificationActions.success('Article loaded', `Loaded ${article.total_chunks} chunks`);
-      
+      notificationActions.success(
+        "Article loaded",
+        `Loaded ${article.total_chunks} chunks`,
+      );
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || error.message || 'Failed to load article';
-      
-      searchState.update(state => ({ 
-        ...state, 
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Failed to load article";
+
+      searchState.update((state) => ({
+        ...state,
         articleLoading: false,
-        currentArticle: null
+        currentArticle: null,
       }));
 
-      notificationActions.error('Failed to load article', errorMessage);
+      notificationActions.error("Failed to load article", errorMessage);
     }
   },
 
   // Close article view
   closeArticle: () => {
-    searchState.update(state => ({
+    searchState.update((state) => ({
       ...state,
-      currentArticle: null
+      currentArticle: null,
     }));
   },
 
   // Find similar documents
-  findSimilar: async (documentId: number, collection?: string, limit?: number) => {
-    searchState.update(state => ({ 
-      ...state, 
-      loading: true, 
-      error: null 
+  findSimilar: async (
+    documentId: number,
+    collection?: string,
+    limit?: number,
+  ) => {
+    searchState.update((state) => ({
+      ...state,
+      loading: true,
+      error: null,
     }));
 
     try {
       const response = await api.findSimilar(documentId, collection, limit);
-      
-      searchState.update(state => ({
+
+      searchState.update((state) => ({
         ...state,
         loading: false,
         results: response.results,
         currentResponse: response,
-        query: response.query
+        query: response.query,
       }));
 
       notificationActions.success(
-        'Similar documents found',
-        `Found ${response.total_found} similar documents`
+        "Similar documents found",
+        `Found ${response.total_found} similar documents`,
       );
-      
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || error.message || 'Failed to find similar documents';
-      
-      searchState.update(state => ({ 
-        ...state, 
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.message ||
+        "Failed to find similar documents";
+
+      searchState.update((state) => ({
+        ...state,
         loading: false,
-        error: errorMessage 
+        error: errorMessage,
       }));
 
-      notificationActions.error('Failed to find similar documents', errorMessage);
+      notificationActions.error(
+        "Failed to find similar documents",
+        errorMessage,
+      );
     }
   },
 
   // Reset entire search state
   reset: () => {
     searchState.set(initialState);
-  }
+  },
 };
 
 // Export the store and actions

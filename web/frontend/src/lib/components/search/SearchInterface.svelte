@@ -43,7 +43,6 @@
   // Handle form submission
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    console.log('Form submitted, query:', $searchQuery);
     if ($searchQuery.trim()) {
       searchActions.executeSearch();
     }
@@ -61,6 +60,12 @@
 
   // Handle keyboard shortcuts
   const handleKeydown = (e: KeyboardEvent) => {
+    // Don't handle shortcuts if user is typing in an input/textarea
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+    
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       handleSubmit(e);
     }

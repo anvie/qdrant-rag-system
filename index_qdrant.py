@@ -10,7 +10,7 @@ from typing import List, Optional, Dict
 import requests
 from qdrant_client import QdrantClient, models
 from qdrant_client.models import Distance, VectorParams, PointStruct
-from snowflake_utils import get_snowflake_id
+from snowflake_utils import get_snowflake_ids
 
 
 def embed_one_ollama(
@@ -172,6 +172,8 @@ def create_chunk_objects(
     # Limit chunks per article to avoid overwhelming the index
     chunks = chunks[:max_chunks_per_article]
 
+    ids = get_snowflake_ids(len(chunks))
+
     chunk_objects = []
     for i, chunk in enumerate(chunks):
         # Include title in each chunk for better context
@@ -179,7 +181,7 @@ def create_chunk_objects(
         chunk_with_title = f"# {title}\n\n{chunk}"
 
         # Generate unique Snowflake ID for each chunk
-        chunk_id = get_snowflake_id()
+        chunk_id = ids[i] + i
 
         chunk_objects.append(
             {

@@ -33,11 +33,11 @@ class WebSocketService {
           console.log(`WebSocket connected: ${endpoint}`);
           this.connections.set(endpoint, ws);
           this.reconnectAttempts.set(endpoint, 0);
-          
+
           if (onMessage) {
             this.addHandler(endpoint, onMessage);
           }
-          
+
           resolve(ws);
         };
 
@@ -46,14 +46,18 @@ class WebSocketService {
             const message: WebSocketMessage = JSON.parse(event.data);
             this.handleMessage(endpoint, message);
           } catch (error) {
-            console.error('Failed to parse WebSocket message:', error);
+            console.error("Failed to parse WebSocket message:", error);
           }
         };
 
         ws.onclose = (event) => {
-          console.log(`WebSocket closed: ${endpoint}`, event.code, event.reason);
+          console.log(
+            `WebSocket closed: ${endpoint}`,
+            event.code,
+            event.reason,
+          );
           this.connections.delete(endpoint);
-          
+
           // Attempt reconnection if not manual close
           if (event.code !== 1000) {
             this.attemptReconnect(endpoint, onMessage);
@@ -64,7 +68,6 @@ class WebSocketService {
           console.error(`WebSocket error: ${endpoint}`, error);
           reject(error);
         };
-
       } catch (error) {
         reject(error);
       }
@@ -77,7 +80,7 @@ class WebSocketService {
   disconnect(endpoint: string): void {
     const ws = this.connections.get(endpoint);
     if (ws) {
-      ws.close(1000, 'Manual disconnect');
+      ws.close(1000, "Manual disconnect");
       this.connections.delete(endpoint);
       this.handlers.delete(endpoint);
       this.reconnectAttempts.delete(endpoint);
@@ -91,9 +94,9 @@ class WebSocketService {
     const ws = this.connections.get(endpoint);
     if (ws && ws.readyState === WebSocket.OPEN) {
       const payload = JSON.stringify({
-        type: 'message',
+        type: "message",
         data: message,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
       ws.send(payload);
     } else {
@@ -136,8 +139,8 @@ class WebSocketService {
    * Get all active connections
    */
   getActiveConnections(): string[] {
-    return Array.from(this.connections.keys()).filter(endpoint => 
-      this.isConnected(endpoint)
+    return Array.from(this.connections.keys()).filter((endpoint) =>
+      this.isConnected(endpoint),
     );
   }
 
@@ -147,11 +150,11 @@ class WebSocketService {
   private handleMessage(endpoint: string, message: WebSocketMessage): void {
     const handlers = this.handlers.get(endpoint);
     if (handlers) {
-      handlers.forEach(handler => {
+      handlers.forEach((handler) => {
         try {
           handler(message);
         } catch (error) {
-          console.error('Error in WebSocket message handler:', error);
+          console.error("Error in WebSocket message handler:", error);
         }
       });
     }
@@ -162,17 +165,21 @@ class WebSocketService {
    */
   private attemptReconnect(endpoint: string, onMessage?: MessageHandler): void {
     const attempts = this.reconnectAttempts.get(endpoint) || 0;
-    
+
     if (attempts < this.maxReconnectAttempts) {
-      console.log(`Attempting to reconnect (${attempts + 1}/${this.maxReconnectAttempts}): ${endpoint}`);
-      
-      setTimeout(() => {
-        this.reconnectAttempts.set(endpoint, attempts + 1);
-        this.connect(endpoint, onMessage).catch((error) => {
-          console.error('Reconnection failed:', error);
-        });
-      }, this.reconnectDelay * Math.pow(2, attempts)); // Exponential backoff
-      
+      console.log(
+        `Attempting to reconnect (${attempts + 1}/${this.maxReconnectAttempts}): ${endpoint}`,
+      );
+
+      setTimeout(
+        () => {
+          this.reconnectAttempts.set(endpoint, attempts + 1);
+          this.connect(endpoint, onMessage).catch((error) => {
+            console.error("Reconnection failed:", error);
+          });
+        },
+        this.reconnectDelay * Math.pow(2, attempts),
+      ); // Exponential backoff
     } else {
       console.error(`Max reconnection attempts reached for: ${endpoint}`);
       this.reconnectAttempts.delete(endpoint);
@@ -201,7 +208,7 @@ export class IndexingWebSocket {
 
   connect(onProgress: (progress: any) => void): Promise<WebSocket> {
     return this.ws.connect(this.endpoint, (message) => {
-      if (message.type === 'progress') {
+      if (message.type === "progress") {
         onProgress(message.data);
       }
     });
@@ -223,7 +230,7 @@ export class ChatWebSocket {
 
   connect(onMessage: (message: any) => void): Promise<WebSocket> {
     return this.ws.connect(this.endpoint, (wsMessage) => {
-      if (wsMessage.type === 'chat_response') {
+      if (wsMessage.type === "chat_response") {
         onMessage(wsMessage.data);
       }
     });

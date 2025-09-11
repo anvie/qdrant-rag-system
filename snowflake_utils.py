@@ -31,8 +31,8 @@ class SnowflakeIDManager:
             custom_epoch: Custom epoch timestamp in milliseconds (optional)
         """
         if custom_epoch is None:
-            # Use a recent epoch (Jan 1, 2020) to maximize ID space
-            custom_epoch = int(time.mktime((2020, 1, 1, 0, 0, 0, 0, 0, 0)) * 1000)
+            # Use a recent epoch (Jan 1, 2019) to maximize ID space
+            custom_epoch = int(time.mktime((2019, 1, 1, 0, 0, 0, 0, 0, 0)) * 1000)
 
         self._generator = SnowflakeGenerator(instance_id, epoch=custom_epoch)
         SnowflakeIDManager._instance = self

@@ -2,7 +2,7 @@
  * Notifications store for managing toast messages and user feedback
  */
 
-import { writable, derived } from 'svelte/store';
+import { writable, derived } from "svelte/store";
 
 // Notification interfaces
 export interface Notification {
@@ -17,12 +17,12 @@ export interface Notification {
   dismissed: boolean;
 }
 
-export type NotificationType = 'success' | 'error' | 'warning' | 'info';
+export type NotificationType = "success" | "error" | "warning" | "info";
 
 export interface NotificationAction {
   label: string;
   action: () => void;
-  style?: 'primary' | 'secondary';
+  style?: "primary" | "secondary";
 }
 
 export interface NotificationOptions {
@@ -51,16 +51,18 @@ const initialState: NotificationsState = {
 export const notificationsStore = writable<NotificationsState>(initialState);
 
 // Derived stores
-export const notifications = derived(notificationsStore, ($state) => 
-  $state.notifications.filter(n => !n.dismissed)
+export const notifications = derived(notificationsStore, ($state) =>
+  $state.notifications.filter((n) => !n.dismissed),
 );
 
-export const hasNotifications = derived(notifications, ($notifications) => 
-  $notifications.length > 0
+export const hasNotifications = derived(
+  notifications,
+  ($notifications) => $notifications.length > 0,
 );
 
-export const notificationCount = derived(notifications, ($notifications) => 
-  $notifications.length
+export const notificationCount = derived(
+  notifications,
+  ($notifications) => $notifications.length,
 );
 
 // Utility functions
@@ -69,15 +71,15 @@ const generateId = (): string => {
 };
 
 const createNotification = (
-  title: string, 
-  options: NotificationOptions = {}
+  title: string,
+  options: NotificationOptions = {},
 ): Notification => {
   const {
-    type = 'info',
+    type = "info",
     message,
     duration,
     dismissible = true,
-    actions = []
+    actions = [],
   } = options;
 
   return {
@@ -102,7 +104,7 @@ const setAutoDismiss = (notification: Notification) => {
       notificationActions.dismiss(notification.id);
       timeoutHandlers.delete(notification.id);
     }, notification.duration);
-    
+
     timeoutHandlers.set(notification.id, timeout);
   }
 };
@@ -122,29 +124,32 @@ export const notificationActions = {
    */
   add(title: string, options: NotificationOptions = {}): string {
     const notification = createNotification(title, options);
-    
-    notificationsStore.update(state => {
+
+    notificationsStore.update((state) => {
       const newNotifications = [...state.notifications, notification];
-      
+
       // Limit the number of notifications
       if (newNotifications.length > state.maxNotifications) {
-        const excess = newNotifications.slice(0, newNotifications.length - state.maxNotifications);
-        excess.forEach(n => clearAutoDismiss(n.id));
+        const excess = newNotifications.slice(
+          0,
+          newNotifications.length - state.maxNotifications,
+        );
+        excess.forEach((n) => clearAutoDismiss(n.id));
         return {
           ...state,
-          notifications: newNotifications.slice(-state.maxNotifications)
+          notifications: newNotifications.slice(-state.maxNotifications),
         };
       }
-      
+
       return {
         ...state,
-        notifications: newNotifications
+        notifications: newNotifications,
       };
     });
-    
+
     // Set auto-dismiss if duration is specified
     setAutoDismiss(notification);
-    
+
     return notification.id;
   },
 
@@ -152,10 +157,10 @@ export const notificationActions = {
    * Add success notification
    */
   success(title: string, message?: string, duration?: number): string {
-    return this.add(title, { 
-      type: 'success', 
-      message, 
-      duration: duration !== undefined ? duration : 4000 
+    return this.add(title, {
+      type: "success",
+      message,
+      duration: duration !== undefined ? duration : 4000,
     });
   },
 
@@ -163,10 +168,10 @@ export const notificationActions = {
    * Add error notification
    */
   error(title: string, message?: string, duration?: number): string {
-    return this.add(title, { 
-      type: 'error', 
-      message, 
-      duration: duration !== undefined ? duration : 8000 
+    return this.add(title, {
+      type: "error",
+      message,
+      duration: duration !== undefined ? duration : 8000,
     });
   },
 
@@ -174,10 +179,10 @@ export const notificationActions = {
    * Add warning notification
    */
   warning(title: string, message?: string, duration?: number): string {
-    return this.add(title, { 
-      type: 'warning', 
-      message, 
-      duration: duration !== undefined ? duration : 6000 
+    return this.add(title, {
+      type: "warning",
+      message,
+      duration: duration !== undefined ? duration : 6000,
     });
   },
 
@@ -185,17 +190,20 @@ export const notificationActions = {
    * Add info notification
    */
   info(title: string, message?: string, duration?: number): string {
-    return this.add(title, { 
-      type: 'info', 
-      message, 
-      duration: duration !== undefined ? duration : 5000 
+    return this.add(title, {
+      type: "info",
+      message,
+      duration: duration !== undefined ? duration : 5000,
     });
   },
 
   /**
    * Add persistent notification (no auto-dismiss)
    */
-  persistent(title: string, options: Omit<NotificationOptions, 'duration'> = {}): string {
+  persistent(
+    title: string,
+    options: Omit<NotificationOptions, "duration"> = {},
+  ): string {
     return this.add(title, { ...options, duration: 0 });
   },
 
@@ -204,19 +212,21 @@ export const notificationActions = {
    */
   dismiss(notificationId: string): void {
     clearAutoDismiss(notificationId);
-    
-    notificationsStore.update(state => ({
+
+    notificationsStore.update((state) => ({
       ...state,
-      notifications: state.notifications.map(n => 
-        n.id === notificationId ? { ...n, dismissed: true } : n
-      )
+      notifications: state.notifications.map((n) =>
+        n.id === notificationId ? { ...n, dismissed: true } : n,
+      ),
     }));
-    
+
     // Remove dismissed notification after animation time
     setTimeout(() => {
-      notificationsStore.update(state => ({
+      notificationsStore.update((state) => ({
         ...state,
-        notifications: state.notifications.filter(n => n.id !== notificationId)
+        notifications: state.notifications.filter(
+          (n) => n.id !== notificationId,
+        ),
       }));
     }, 300); // Match CSS transition duration
   },
@@ -225,21 +235,24 @@ export const notificationActions = {
    * Dismiss all notifications
    */
   dismissAll(): void {
-    notificationsStore.update(state => {
+    notificationsStore.update((state) => {
       // Clear all timeouts
-      state.notifications.forEach(n => clearAutoDismiss(n.id));
-      
+      state.notifications.forEach((n) => clearAutoDismiss(n.id));
+
       return {
         ...state,
-        notifications: state.notifications.map(n => ({ ...n, dismissed: true }))
+        notifications: state.notifications.map((n) => ({
+          ...n,
+          dismissed: true,
+        })),
       };
     });
-    
+
     // Remove all after animation
     setTimeout(() => {
-      notificationsStore.update(state => ({
+      notificationsStore.update((state) => ({
         ...state,
-        notifications: []
+        notifications: [],
       }));
     }, 300);
   },
@@ -249,10 +262,10 @@ export const notificationActions = {
    */
   remove(notificationId: string): void {
     clearAutoDismiss(notificationId);
-    
-    notificationsStore.update(state => ({
+
+    notificationsStore.update((state) => ({
       ...state,
-      notifications: state.notifications.filter(n => n.id !== notificationId)
+      notifications: state.notifications.filter((n) => n.id !== notificationId),
     }));
   },
 
@@ -260,13 +273,13 @@ export const notificationActions = {
    * Clear all notifications immediately
    */
   clear(): void {
-    notificationsStore.update(state => {
+    notificationsStore.update((state) => {
       // Clear all timeouts
-      state.notifications.forEach(n => clearAutoDismiss(n.id));
-      
+      state.notifications.forEach((n) => clearAutoDismiss(n.id));
+
       return {
         ...state,
-        notifications: []
+        notifications: [],
       };
     });
   },
@@ -274,10 +287,14 @@ export const notificationActions = {
   /**
    * Update notification settings
    */
-  updateSettings(settings: Partial<Pick<NotificationsState, 'maxNotifications' | 'defaultDuration'>>): void {
-    notificationsStore.update(state => ({
+  updateSettings(
+    settings: Partial<
+      Pick<NotificationsState, "maxNotifications" | "defaultDuration">
+    >,
+  ): void {
+    notificationsStore.update((state) => ({
       ...state,
-      ...settings
+      ...settings,
     }));
   },
 
@@ -286,9 +303,11 @@ export const notificationActions = {
    */
   getById(notificationId: string): Notification | null {
     let currentState: NotificationsState;
-    notificationsStore.subscribe(state => currentState = state)();
-    
-    return currentState.notifications.find(n => n.id === notificationId) || null;
+    notificationsStore.subscribe((state) => (currentState = state))();
+
+    return (
+      currentState.notifications.find((n) => n.id === notificationId) || null
+    );
   },
 
   /**
@@ -311,11 +330,11 @@ export const notificationActions = {
   resumeAutoDismiss(notificationId: string, remainingTime?: number): void {
     const notification = this.getById(notificationId);
     if (!notification || !notification.duration) return;
-    
+
     const timeout = setTimeout(() => {
       this.dismiss(notificationId);
     }, remainingTime || notification.duration);
-    
+
     timeoutHandlers.set(notificationId, timeout);
   },
 };
@@ -323,67 +342,61 @@ export const notificationActions = {
 // Preset notification messages for common scenarios
 export const presetNotifications = {
   // API related
-  apiError: (operation: string, error?: string) => 
+  apiError: (operation: string, error?: string) =>
     notificationActions.error(
-      'API Error',
-      error || `Failed to ${operation}. Please try again.`
+      "API Error",
+      error || `Failed to ${operation}. Please try again.`,
     ),
-  
+
   apiSuccess: (operation: string) =>
     notificationActions.success(
-      'Success',
-      `${operation} completed successfully.`
+      "Success",
+      `${operation} completed successfully.`,
     ),
 
   // Connection related
   connectionLost: () =>
-    notificationActions.warning(
-      'Connection Lost',
-      'Trying to reconnect...'
-    ),
-  
+    notificationActions.warning("Connection Lost", "Trying to reconnect..."),
+
   connectionRestored: () =>
-    notificationActions.success(
-      'Connection Restored',
-      'You are back online.'
-    ),
+    notificationActions.success("Connection Restored", "You are back online."),
 
   // Collection related
   collectionCreated: (name: string) =>
     notificationActions.success(
-      'Collection Created',
-      `Collection "${name}" has been created successfully.`
+      "Collection Created",
+      `Collection "${name}" has been created successfully.`,
     ),
-  
+
   collectionDeleted: (name: string) =>
     notificationActions.info(
-      'Collection Deleted',
-      `Collection "${name}" has been removed.`
+      "Collection Deleted",
+      `Collection "${name}" has been removed.`,
     ),
-  
+
   collectionError: (operation: string, name: string, error?: string) =>
     notificationActions.error(
-      'Collection Error',
-      error || `Failed to ${operation} collection "${name}".`
+      "Collection Error",
+      error || `Failed to ${operation} collection "${name}".`,
     ),
 
   // System related
   systemError: (error?: string) =>
     notificationActions.error(
-      'System Error',
-      error || 'A system error occurred. Please check the system status.'
+      "System Error",
+      error || "A system error occurred. Please check the system status.",
     ),
-  
+
   systemHealthy: () =>
     notificationActions.success(
-      'System Healthy',
-      'All services are running normally.'
+      "System Healthy",
+      "All services are running normally.",
     ),
 };
 
 // Auto-cleanup on page unload
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
     // Clear all timeouts
     timeoutHandlers.forEach((timeout) => clearTimeout(timeout));
     timeoutHandlers.clear();

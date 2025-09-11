@@ -2,10 +2,15 @@
  * System status store for managing real-time system monitoring
  */
 
-import { writable, derived } from 'svelte/store';
-import type { SystemStatus, HealthResponse, ServiceHealth, ModelsResponse } from '../services/api';
-import { api } from '../services/api';
-import { websocketService } from '../services/websocket';
+import { writable, derived } from "svelte/store";
+import type {
+  SystemStatus,
+  HealthResponse,
+  ServiceHealth,
+  ModelsResponse,
+} from "../services/api";
+import { api } from "../services/api";
+import { websocketService } from "../services/websocket";
 
 // Store interfaces
 export interface SystemState {
@@ -48,48 +53,51 @@ export const systemStore = writable<SystemState>(initialSystemState);
 export const systemStatus = derived(systemStore, ($system) => $system.status);
 export const healthStatus = derived(systemStore, ($system) => $system.health);
 export const modelsInfo = derived(systemStore, ($system) => $system.models);
-export const connectionStatus = derived(systemStore, ($system) => $system.connectionStatus);
+export const connectionStatus = derived(
+  systemStore,
+  ($system) => $system.connectionStatus,
+);
 export const isLoading = derived(systemStore, ($system) => $system.loading);
 export const systemError = derived(systemStore, ($system) => $system.error);
 
 // Derived store for overall system health
 export const overallHealth = derived(systemStore, ($system) => {
-  if (!$system.health) return 'unknown';
-  
+  if (!$system.health) return "unknown";
+
   const services = $system.health.services;
-  const healthyServices = services.filter(s => s.status === 'healthy');
-  
-  if (healthyServices.length === services.length) return 'healthy';
-  if (healthyServices.length === 0) return 'unhealthy';
-  return 'partial';
+  const healthyServices = services.filter((s) => s.status === "healthy");
+
+  if (healthyServices.length === services.length) return "healthy";
+  if (healthyServices.length === 0) return "unhealthy";
+  return "partial";
 });
 
 // Derived store for service status summary
 export const servicesSummary = derived(systemStore, ($system) => {
   if (!$system.health) return { total: 0, healthy: 0, unhealthy: 0 };
-  
+
   const services = $system.health.services;
   return {
     total: services.length,
-    healthy: services.filter(s => s.status === 'healthy').length,
-    unhealthy: services.filter(s => s.status !== 'healthy').length,
+    healthy: services.filter((s) => s.status === "healthy").length,
+    unhealthy: services.filter((s) => s.status !== "healthy").length,
   };
 });
 
 // WebSocket message handler
 let wsConnected = false;
 const handleWebSocketMessage = (message: any) => {
-  systemStore.update(state => {
+  systemStore.update((state) => {
     switch (message.type) {
-      case 'system_status':
+      case "system_status":
         return {
           ...state,
           status: message.data,
           lastUpdated: new Date(),
-          connectionStatus: { ...state.connectionStatus, websocket: true }
+          connectionStatus: { ...state.connectionStatus, websocket: true },
         };
-      
-      case 'health_update':
+
+      case "health_update":
         return {
           ...state,
           health: message.data,
@@ -97,18 +105,24 @@ const handleWebSocketMessage = (message: any) => {
           connectionStatus: {
             ...state.connectionStatus,
             websocket: true,
-            qdrant: message.data.services.find((s: ServiceHealth) => s.service === 'qdrant')?.status === 'healthy',
-            ollama: message.data.services.find((s: ServiceHealth) => s.service === 'ollama')?.status === 'healthy',
-          }
+            qdrant:
+              message.data.services.find(
+                (s: ServiceHealth) => s.service === "qdrant",
+              )?.status === "healthy",
+            ollama:
+              message.data.services.find(
+                (s: ServiceHealth) => s.service === "ollama",
+              )?.status === "healthy",
+          },
         };
-      
-      case 'connection_status':
+
+      case "connection_status":
         return {
           ...state,
           connectionStatus: { ...state.connectionStatus, ...message.data },
           lastUpdated: new Date(),
         };
-      
+
       default:
         return state;
     }
@@ -121,32 +135,34 @@ export const systemActions = {
    * Initialize system monitoring with WebSocket connection
    */
   async initialize(): Promise<void> {
-    systemStore.update(state => ({ ...state, loading: true, error: null }));
-    
+    systemStore.update((state) => ({ ...state, loading: true, error: null }));
+
     try {
       // Load initial data
       await this.loadSystemData();
-      
+
       // Connect to WebSocket for real-time updates
       if (!wsConnected) {
-        await websocketService.connect('/system', handleWebSocketMessage);
+        await websocketService.connect("/system", handleWebSocketMessage);
         wsConnected = true;
-        
-        systemStore.update(state => ({
+
+        systemStore.update((state) => ({
           ...state,
-          connectionStatus: { ...state.connectionStatus, websocket: true }
+          connectionStatus: { ...state.connectionStatus, websocket: true },
         }));
       }
-      
     } catch (error) {
-      console.error('Failed to initialize system monitoring:', error);
-      systemStore.update(state => ({
+      console.error("Failed to initialize system monitoring:", error);
+      systemStore.update((state) => ({
         ...state,
-        error: error instanceof Error ? error.message : 'Failed to initialize system monitoring',
-        connectionStatus: { ...state.connectionStatus, api: false }
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to initialize system monitoring",
+        connectionStatus: { ...state.connectionStatus, api: false },
       }));
     } finally {
-      systemStore.update(state => ({ ...state, loading: false }));
+      systemStore.update((state) => ({ ...state, loading: false }));
     }
   },
 
@@ -154,8 +170,8 @@ export const systemActions = {
    * Load system data from API
    */
   async loadSystemData(): Promise<void> {
-    systemStore.update(state => ({ ...state, loading: true, error: null }));
-    
+    systemStore.update((state) => ({ ...state, loading: true, error: null }));
+
     try {
       // Load all system data in parallel
       const [status, health, models] = await Promise.all([
@@ -164,7 +180,7 @@ export const systemActions = {
         api.getModels(),
       ]);
 
-      systemStore.update(state => ({
+      systemStore.update((state) => ({
         ...state,
         status,
         health,
@@ -173,20 +189,24 @@ export const systemActions = {
         connectionStatus: {
           ...state.connectionStatus,
           api: true,
-          qdrant: health.services.find(s => s.service === 'qdrant')?.status === 'healthy' || false,
-          ollama: health.services.find(s => s.service === 'ollama')?.status === 'healthy' || false,
-        }
+          qdrant:
+            health.services.find((s) => s.service === "qdrant")?.status ===
+              "healthy" || false,
+          ollama:
+            health.services.find((s) => s.service === "ollama")?.status ===
+              "healthy" || false,
+        },
       }));
-      
     } catch (error) {
-      console.error('Failed to load system data:', error);
-      systemStore.update(state => ({
+      console.error("Failed to load system data:", error);
+      systemStore.update((state) => ({
         ...state,
-        error: error instanceof Error ? error.message : 'Failed to load system data',
-        connectionStatus: { ...state.connectionStatus, api: false }
+        error:
+          error instanceof Error ? error.message : "Failed to load system data",
+        connectionStatus: { ...state.connectionStatus, api: false },
       }));
     } finally {
-      systemStore.update(state => ({ ...state, loading: false }));
+      systemStore.update((state) => ({ ...state, loading: false }));
     }
   },
 
@@ -201,7 +221,7 @@ export const systemActions = {
    * Clear error state
    */
   clearError(): void {
-    systemStore.update(state => ({ ...state, error: null }));
+    systemStore.update((state) => ({ ...state, error: null }));
   },
 
   /**
@@ -210,7 +230,7 @@ export const systemActions = {
   reset(): void {
     systemStore.set(initialSystemState);
     if (wsConnected) {
-      websocketService.disconnect('/system');
+      websocketService.disconnect("/system");
       wsConnected = false;
     }
   },
@@ -220,12 +240,14 @@ export const systemActions = {
    */
   isServiceHealthy(serviceName: string): boolean {
     let currentState: SystemState;
-    systemStore.subscribe(state => currentState = state)();
-    
+    systemStore.subscribe((state) => (currentState = state))();
+
     if (!currentState.health) return false;
-    
-    const service = currentState.health.services.find(s => s.service === serviceName);
-    return service?.status === 'healthy';
+
+    const service = currentState.health.services.find(
+      (s) => s.service === serviceName,
+    );
+    return service?.status === "healthy";
   },
 
   /**
@@ -233,18 +255,20 @@ export const systemActions = {
    */
   getServiceResponseTime(serviceName: string): number | null {
     let currentState: SystemState;
-    systemStore.subscribe(state => currentState = state)();
-    
+    systemStore.subscribe((state) => (currentState = state))();
+
     if (!currentState.health) return null;
-    
-    const service = currentState.health.services.find(s => s.service === serviceName);
+
+    const service = currentState.health.services.find(
+      (s) => s.service === serviceName,
+    );
     return service?.response_time_ms || null;
   },
 };
 
 // Auto-cleanup on page unload
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
     systemActions.reset();
   });
 }
