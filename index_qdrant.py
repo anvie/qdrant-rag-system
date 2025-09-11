@@ -183,7 +183,7 @@ def create_chunk_objects(
         # Use the embedding formatter to format text according to model requirements
 
         words = chunk.split(" ")
-        print(f"Chunk {i} ({len(words)} words): {chunk[:60]}...")
+        # print(f"Chunk {i} ({len(words)} words): {chunk[:60]}...")
         if len(words) < 10:
             # Skip very short chunks
             continue

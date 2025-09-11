@@ -92,15 +92,23 @@ class WebSocketService {
    */
   send(endpoint: string, message: any): void {
     const ws = this.connections.get(endpoint);
+    console.log("[WebSocketService] send called - endpoint:", endpoint, "connected:", ws?.readyState === WebSocket.OPEN);
+    
     if (ws && ws.readyState === WebSocket.OPEN) {
-      const payload = JSON.stringify({
-        type: "message",
-        data: message,
-        timestamp: Date.now(),
-      });
+      // If message already has type and data structure, use it directly
+      const payload = JSON.stringify(
+        message.type && message.data 
+          ? message 
+          : {
+              type: "message",
+              data: message,
+              timestamp: Date.now(),
+            }
+      );
+      console.log("[WebSocketService] Sending payload:", payload);
       ws.send(payload);
     } else {
-      console.warn(`WebSocket not connected: ${endpoint}`);
+      console.warn(`[WebSocketService] WebSocket not connected: ${endpoint}`);
     }
   }
 
@@ -222,26 +230,148 @@ export class IndexingWebSocket {
 export class ChatWebSocket {
   private ws: WebSocketService;
   private endpoint: string;
+  private sessionId: string;
+  private pingInterval: number | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
 
   constructor(sessionId: string) {
     this.ws = new WebSocketService();
+    this.sessionId = sessionId;
     this.endpoint = `/chat/${sessionId}`;
   }
 
   connect(onMessage: (message: any) => void): Promise<WebSocket> {
     return this.ws.connect(this.endpoint, (wsMessage) => {
-      if (wsMessage.type === "chat_response") {
-        onMessage(wsMessage.data);
+      // Handle different message types
+      switch (wsMessage.type) {
+        case "connected":
+          this.reconnectAttempts = 0;
+          this.startPing();
+          onMessage(wsMessage);
+          break;
+          
+        case "status":
+        case "context":
+        case "content":
+        case "complete":
+        case "error":
+          onMessage(wsMessage);
+          break;
+          
+        case "pong":
+          // Handle ping response (keep connection alive)
+          break;
+          
+        default:
+          // Forward unknown message types
+          onMessage(wsMessage);
       }
+    }).catch((error) => {
+      console.error("ChatWebSocket connection failed:", error);
+      this.attemptReconnect(onMessage);
+      throw error;
     });
   }
 
   sendMessage(message: string): void {
-    this.ws.send(this.endpoint, { message });
+    console.log("[ChatWebSocket] sendMessage called with:", message);
+    console.log("[ChatWebSocket] Endpoint:", this.endpoint);
+    console.log("[ChatWebSocket] Connection status:", this.ws.isConnected(this.endpoint));
+    
+    try {
+      const messagePayload = {
+        type: "message",
+        data: {
+          message: message,
+          timestamp: Date.now()
+        }
+      };
+      console.log("[ChatWebSocket] Sending payload:", messagePayload);
+      
+      this.ws.send(this.endpoint, messagePayload);
+      console.log("[ChatWebSocket] Message sent successfully");
+    } catch (error) {
+      console.error("[ChatWebSocket] Failed to send chat message:", error);
+      throw error;
+    }
+  }
+
+  sendTypingIndicator(isTyping: boolean): void {
+    try {
+      this.ws.send(this.endpoint, {
+        type: "typing",
+        data: {
+          status: isTyping,
+          timestamp: Date.now()
+        }
+      });
+    } catch (error) {
+      console.error("Failed to send typing indicator:", error);
+    }
+  }
+
+  ping(): void {
+    try {
+      this.ws.send(this.endpoint, {
+        type: "ping",
+        data: {
+          timestamp: Date.now()
+        }
+      });
+    } catch (error) {
+      console.error("Failed to send ping:", error);
+    }
   }
 
   disconnect(): void {
+    this.stopPing();
     this.ws.disconnect(this.endpoint);
+  }
+
+  isConnected(): boolean {
+    return this.ws.isConnected(this.endpoint);
+  }
+
+  private startPing(): void {
+    this.stopPing(); // Clear any existing ping
+    
+    this.pingInterval = window.setInterval(() => {
+      if (this.isConnected()) {
+        this.ping();
+      } else {
+        this.stopPing();
+      }
+    }, 30000); // Ping every 30 seconds
+  }
+
+  private stopPing(): void {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+  }
+
+  private async attemptReconnect(onMessage: (message: any) => void): Promise<void> {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error("Max reconnection attempts reached");
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+    
+    console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${delay}ms...`);
+    
+    setTimeout(async () => {
+      try {
+        await this.connect(onMessage);
+        console.log("Reconnected successfully");
+      } catch (error) {
+        console.error("Reconnection failed:", error);
+        this.attemptReconnect(onMessage);
+      }
+    }, delay);
   }
 }
 

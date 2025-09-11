@@ -118,6 +118,56 @@ export interface EmbeddingModel {
   max_tokens?: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+  response_time_ms?: number;
+  sources?: Source[];
+  search_query?: string;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  collection_name: string;
+  llm_model: string;
+  embedding_model: string;
+  temperature: number;
+  top_k: number;
+  min_score: number;
+  max_context_length: number;
+  max_tokens: number;
+  system_prompt?: string;
+  show_sources: boolean;
+  message_count: number;
+}
+
+export interface Source {
+  index: number;
+  title: string;
+  article_id: number | string;
+  chunk_index: number;
+  score: number;
+}
+
+export interface ChatResponse {
+  message: ChatMessage;
+  sources?: Source[];
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
 class ApiService {
   private client: AxiosInstance;
 
@@ -258,6 +308,96 @@ class ApiService {
   async getSearchHistory(): Promise<{ history: any[] }> {
     const response = await this.client.get<{ history: any[] }>(
       "/search/history",
+    );
+    return response.data;
+  }
+
+  // Chat endpoints
+  async createChatSession(data: {
+    title?: string;
+    collection_name?: string;
+    llm_model?: string;
+    embedding_model?: string;
+    temperature?: number;
+    top_k?: number;
+    min_score?: number;
+    max_context_length?: number;
+    max_tokens?: number;
+    system_prompt?: string;
+    show_sources?: boolean;
+  } = {}): Promise<ChatSession> {
+    const response = await this.client.post<ChatSession>("/chat/sessions", data);
+    return response.data;
+  }
+
+  async getChatSessions(limit = 50, offset = 0): Promise<ChatSession[]> {
+    const response = await this.client.get<ChatSession[]>(
+      `/chat/sessions?limit=${limit}&offset=${offset}`,
+    );
+    return response.data;
+  }
+
+  async getChatSession(sessionId: string): Promise<ChatSession> {
+    const response = await this.client.get<ChatSession>(
+      `/chat/sessions/${sessionId}`,
+    );
+    return response.data;
+  }
+
+  async updateChatSession(
+    sessionId: string,
+    data: Partial<ChatSession>,
+  ): Promise<ChatSession> {
+    const response = await this.client.put<ChatSession>(
+      `/chat/sessions/${sessionId}`,
+      data,
+    );
+    return response.data;
+  }
+
+  async deleteChatSession(sessionId: string): Promise<{ message: string }> {
+    const response = await this.client.delete(`/chat/sessions/${sessionId}`);
+    return response.data;
+  }
+
+  async getChatMessages(
+    sessionId: string,
+    limit = 100,
+    offset = 0,
+  ): Promise<ChatMessage[]> {
+    const response = await this.client.get<ChatMessage[]>(
+      `/chat/sessions/${sessionId}/messages?limit=${limit}&offset=${offset}`,
+    );
+    return response.data;
+  }
+
+  async sendChatMessage(
+    sessionId: string,
+    message: string,
+    stream = false,
+  ): Promise<ChatResponse> {
+    const response = await this.client.post<ChatResponse>(
+      `/chat/sessions/${sessionId}/messages`,
+      {
+        message,
+        stream,
+      },
+    );
+    return response.data;
+  }
+
+  // Legacy chat endpoints for backward compatibility
+  async sendChatMessageLegacy(data: {
+    message: string;
+    stream?: boolean;
+  }): Promise<ChatResponse> {
+    const response = await this.client.post<ChatResponse>("/chat/", data);
+    return response.data;
+  }
+
+  async getChatConversations(): Promise<{ conversations: ChatConversation[] }> {
+    const response = await this.client.get<{ conversations: ChatConversation[] }>(
+      "/chat/conversations",
     );
     return response.data;
   }

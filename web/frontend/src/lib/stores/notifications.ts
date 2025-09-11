@@ -2,7 +2,7 @@
  * Notifications store for managing toast messages and user feedback
  */
 
-import { writable, derived } from "svelte/store";
+import { writable, derived, get } from "svelte/store";
 
 // Notification interfaces
 export interface Notification {
@@ -302,9 +302,8 @@ export const notificationActions = {
    * Get notification by ID
    */
   getById(notificationId: string): Notification | null {
-    let currentState: NotificationsState;
-    notificationsStore.subscribe((state) => (currentState = state))();
-
+    let currentState: NotificationsState = get(notificationsStore);
+    
     return (
       currentState.notifications.find((n) => n.id === notificationId) || null
     );

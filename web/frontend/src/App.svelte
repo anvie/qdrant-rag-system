@@ -15,6 +15,9 @@
   import SearchResults from "./lib/components/search/SearchResults.svelte";
   import ArticlePreview from "./lib/components/search/ArticlePreview.svelte";
 
+  // Chat components
+  import ChatInterface from "./lib/components/chat/ChatInterface.svelte";
+
   // Common components
   import Card from "./lib/components/common/Card.svelte";
   import Button from "./lib/components/common/Button.svelte";
@@ -163,7 +166,7 @@
   </aside>
 
   <!-- Main Content Area -->
-  <div class="flex-1 flex flex-col min-h-screen overflow-hidden">
+  <div class="flex-1 flex flex-col h-screen overflow-hidden">
     <!-- Top Header -->
     <header class="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
       <div class="flex items-center justify-between">
@@ -235,7 +238,7 @@
     </header>
 
     <!-- Page Content -->
-    <main class="flex-1 overflow-auto p-4 sm:p-6">
+    <main class="flex-1 overflow-auto p-4 sm:p-6" class:flex={currentPage === "chat"} class:flex-col={currentPage === "chat"} class:overflow-hidden={currentPage === "chat"}>
       {#if currentPage === "dashboard"}
         <!-- Dashboard Page -->
         <div class="space-y-6">
@@ -324,27 +327,13 @@
           <SearchResults />
         </div>
       {:else if currentPage === "chat"}
-        <!-- Chat Page (Placeholder) -->
-        <Card>
-          <div class="text-center py-12">
-            <div class="text-green-500 mb-4">
-              <Icon icon="material-symbols:chat" class="w-16 h-16 mx-auto" />
-            </div>
-            <h3 class="text-xl font-medium text-gray-900 mb-2">
-              RAG Chat Interface
-            </h3>
-            <p class="text-gray-600 mb-6 max-w-md mx-auto">
-              Chat with your documents using retrieval-augmented generation
-              powered by your vector collections.
-            </p>
-            <div
-              class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium"
-            >
-              <Icon icon="material-symbols:schedule" class="w-4 h-4 mr-2" />
-              Coming Soon
-            </div>
-          </div>
-        </Card>
+        <!-- Chat Page -->
+        <div class="flex-1 -m-4 sm:-m-6 min-h-0">
+          <ChatInterface 
+            showSidebar={true}
+            autoFocus={true}
+          />
+        </div>
       {:else}
         <!-- Settings Page (Placeholder) -->
         <Card>

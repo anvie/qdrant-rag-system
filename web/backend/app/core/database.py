@@ -13,6 +13,10 @@ import logging
 from app.core.config import settings
 from app.models.collection import Base
 
+# Import all models to register them with Base
+from app.models.collection import Collection
+from app.models.chat import ChatSession, ChatMessage
+
 # Configure logging
 logger = logging.getLogger(__name__)
 

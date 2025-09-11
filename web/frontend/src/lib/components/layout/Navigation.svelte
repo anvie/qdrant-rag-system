@@ -36,7 +36,7 @@
       label: "Chat",
       icon: "material-symbols:chat",
       description: "RAG Chat interface",
-      disabled: true,
+      disabled: false,
     },
   ];
 
