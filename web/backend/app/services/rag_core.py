@@ -5,7 +5,6 @@ Extracted from the working chat_rag.py implementation.
 
 import asyncio
 import json
-import time
 from typing import List, Optional, Dict, Any, Generator
 import logging
 
@@ -328,6 +327,7 @@ def build_rag_prompt(
                 "article_id": article_id,
                 "chunk_index": chunk_index,
                 "score": score,
+                "snippet": content[:500] + ("..." if len(content) > 500 else ""),
             }
         )
 
