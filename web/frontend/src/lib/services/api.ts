@@ -67,6 +67,7 @@ export interface SearchRequest {
   fusion_method?: string;
   article_id?: number;
   group_by_article?: boolean;
+  task_type?: string;
 }
 
 export interface SearchResult {

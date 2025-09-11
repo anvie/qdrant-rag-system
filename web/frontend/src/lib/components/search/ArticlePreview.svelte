@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import { marked } from "marked";
   
   // Components
   import Button from "../common/Button.svelte";
@@ -8,6 +9,12 @@
   
   // Stores
   import { currentArticle, articleLoading, searchActions } from "../../stores/search";
+
+  // Configure marked for better security and styling
+  marked.setOptions({
+    breaks: true, // Convert line breaks to <br>
+    gfm: true,    // GitHub Flavored Markdown
+  });
 
   // Local state
   let currentChunkIndex = 0;
@@ -92,6 +99,22 @@
   $: if ($currentArticle) {
     currentChunkIndex = 0;
   }
+
+  // Render markdown content safely
+  const renderMarkdown = (content: string): string => {
+    if (!content) return '';
+    try {
+      return marked(content);
+    } catch (error) {
+      console.error('Failed to parse markdown:', error);
+      // Fallback to plain text with basic HTML escaping
+      return content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
+    }
+  };
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -217,8 +240,8 @@
             </div>
           </div>
 
-          <div class="mt-4 text-gray-800 leading-relaxed">
-            {currentChunk.content}
+          <div class="mt-4 text-gray-800 leading-relaxed markdown-content">
+            {@html renderMarkdown(currentChunk.content)}
           </div>
         </div>
 
@@ -282,5 +305,128 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  /* Markdown content styling */
+  :global(.markdown-content h1) {
+    font-size: 1.875rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    margin-top: 1.5rem;
+    color: #1f2937;
+  }
+
+  :global(.markdown-content h2) {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    margin-top: 1.25rem;
+    color: #1f2937;
+  }
+
+  :global(.markdown-content h3) {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    margin-top: 1rem;
+    color: #1f2937;
+  }
+
+  :global(.markdown-content h4),
+  :global(.markdown-content h5),
+  :global(.markdown-content h6) {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    margin-top: 0.75rem;
+    color: #1f2937;
+  }
+
+  :global(.markdown-content p) {
+    margin-bottom: 1rem;
+    line-height: 1.7;
+  }
+
+  :global(.markdown-content ul),
+  :global(.markdown-content ol) {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+  }
+
+  :global(.markdown-content li) {
+    margin-bottom: 0.25rem;
+  }
+
+  :global(.markdown-content blockquote) {
+    border-left: 4px solid #e5e7eb;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    font-style: italic;
+    color: #6b7280;
+  }
+
+  :global(.markdown-content code) {
+    background-color: #f3f4f6;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.875em;
+    color: #ef4444;
+  }
+
+  :global(.markdown-content pre) {
+    background-color: #f3f4f6;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  :global(.markdown-content pre code) {
+    background-color: transparent;
+    padding: 0;
+    color: #1f2937;
+    font-size: 0.875rem;
+  }
+
+  :global(.markdown-content a) {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+
+  :global(.markdown-content a:hover) {
+    color: #1d4ed8;
+  }
+
+  :global(.markdown-content strong) {
+    font-weight: 600;
+  }
+
+  :global(.markdown-content em) {
+    font-style: italic;
+  }
+
+  :global(.markdown-content table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+
+  :global(.markdown-content th),
+  :global(.markdown-content td) {
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem;
+    text-align: left;
+  }
+
+  :global(.markdown-content th) {
+    background-color: #f9fafb;
+    font-weight: 600;
+  }
+
+  :global(.markdown-content hr) {
+    border: 0;
+    border-top: 1px solid #e5e7eb;
+    margin: 1.5rem 0;
   }
 </style>

@@ -11,6 +11,7 @@ import requests
 from qdrant_client import QdrantClient, models
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from snowflake_utils import get_snowflake_ids
+from embedding_formatter import format_document, format_query
 
 
 def embed_one_ollama(
@@ -24,7 +25,8 @@ def embed_one_ollama(
     if session is None:
         session = requests
 
-    text = text.lower().strip()
+    # Remove aggressive preprocessing that may interfere with model-specific formatting
+    text = text.strip()
 
     # Try the working combinations first
     attempts = [
@@ -150,6 +152,7 @@ def create_chunk_objects(
     chunk_size: int = 150,
     chunk_overlap: int = 30,
     max_chunks_per_article: int = 10,
+    model_name: str = "bge-m3:567m",
 ) -> List[Dict]:
     """
     Create chunk objects from an article.
@@ -159,6 +162,7 @@ def create_chunk_objects(
         chunk_size: Number of words per chunk
         chunk_overlap: Number of overlapping words between chunks
         max_chunks_per_article: Maximum number of chunks per article (to avoid very long articles)
+        model_name: Name of the embedding model to format text for
 
     Returns:
         List of chunk objects ready for indexing
@@ -176,9 +180,15 @@ def create_chunk_objects(
 
     chunk_objects = []
     for i, chunk in enumerate(chunks):
-        # Include title in each chunk for better context
-        # Format: "Title: [article title]\n\n[chunk content]"
-        chunk_with_title = f"# {title}\n\n{chunk}"
+        # Use the embedding formatter to format text according to model requirements
+
+        words = chunk.split(" ")
+        print(f"Chunk {i} ({len(words)} words): {chunk[:60]}...")
+        if len(words) < 10:
+            # Skip very short chunks
+            continue
+
+        formatted_text = format_document(title, chunk, model_name)
 
         # Generate unique Snowflake ID for each chunk
         chunk_id = ids[i] + i
@@ -190,7 +200,7 @@ def create_chunk_objects(
                 "chunk_index": i,
                 "title": title,
                 "content": chunk,
-                "text": chunk_with_title,  # Combined text for embedding
+                "text": formatted_text,  # Model-specific formatted text for embedding
                 "source": article.get("source", "unknown"),
             }
         )
@@ -738,6 +748,7 @@ def main():
                     chunk_size=args.chunk_size,
                     chunk_overlap=args.chunk_overlap,
                     max_chunks_per_article=args.max_chunks_per_article,
+                    model_name=args.model,
                 )
 
                 all_chunks.extend(chunk_objects)
@@ -849,7 +860,10 @@ def main():
         # --- basic search test ---
         test_query = "apa hukum makmum bersuara keras ketika shalat?"
         print(f"\nTesting search with query: '{test_query}'")
-        qvec = embed_one_ollama(test_query, args.model, args.ollama_url)
+        # Format query according to model requirements
+        formatted_query = format_query(test_query, args.model, "search")
+        print(f"Formatted query: '{formatted_query}'")
+        qvec = embed_one_ollama(formatted_query, args.model, args.ollama_url)
         t0 = time.time()
         res = client.search(
             collection_name=args.collection,

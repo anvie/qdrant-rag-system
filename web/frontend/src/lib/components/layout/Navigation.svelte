@@ -6,9 +6,6 @@
   export let collapsed: boolean = false;
   export let currentPage: string = "dashboard";
 
-  // Debug logging
-  $: console.log("📍 Navigation.svelte - currentPage prop received:", currentPage);
-
   const dispatch = createEventDispatcher<{
     navigate: { page: string };
     toggleSidebar: void;
@@ -73,7 +70,6 @@
     }
 
     const isActive = currentPage === itemId;
-    console.log(`🎨 getNavItemClasses - item: ${itemId}, currentPage: ${currentPage}, isActive: ${isActive}`);
 
     if (isActive) {
       return `${baseClasses} bg-blue-100 text-blue-700 border border-blue-200`;

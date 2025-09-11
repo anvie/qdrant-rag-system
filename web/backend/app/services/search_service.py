@@ -28,6 +28,7 @@ try:
         group_results_by_article,
         create_session,
     )
+    from embedding_formatter import format_query
 except ImportError as e:
     print(f"Warning: Could not import search functions: {e}")
 
@@ -85,18 +86,37 @@ class SearchService:
         sorted_items = sorted(kwargs.items())
         return str(hash(tuple(sorted_items)))
 
-    async def get_embedding(self, text: str, use_cache: bool = True) -> List[float]:
-        """Get embedding for text with optional caching."""
+    async def get_embedding(
+        self, text: str, task_type: str = "search", use_cache: bool = True
+    ) -> List[float]:
+        """Get embedding for text with optional caching and query formatting."""
+        # Format the text according to model requirements
+        try:
+            formatted_text = format_query(text, self.embedding_model, task_type)
+        except NameError:
+            # Fallback if format_query is not available
+            formatted_text = text
+
+        print(f"Formatted text: {formatted_text}")
+
+        cache_key = f"{formatted_text}:{task_type}"
+
         if use_cache:
-            cached_embedding, timestamp = self._embedding_cache.get(text, (None, None))
+            cached_embedding, timestamp = self._embedding_cache.get(
+                cache_key, (None, None)
+            )
             if cached_embedding and self._is_cache_valid(timestamp):
                 return cached_embedding
 
-        print(f"Generate embedding for text {text} with model {self.embedding_model}")
+        # if formatted_text != text:
+        #     print(f"Generate embedding for formatted text: {formatted_text} (original: {text}) with model {self.embedding_model}")
+        # else:
+        #     print(f"Generate embedding for text: {text} with model {self.embedding_model}")
+
         # Generate new embedding
         embedding = await self._run_sync_in_thread(
             embed_one_ollama,
-            text,
+            formatted_text,
             self.embedding_model,
             self.ollama_url,
             120,
@@ -105,7 +125,7 @@ class SearchService:
 
         # Cache the result
         if use_cache:
-            self._embedding_cache[text] = (embedding, datetime.now())
+            self._embedding_cache[cache_key] = (embedding, datetime.now())
 
         return embedding
 
@@ -116,6 +136,7 @@ class SearchService:
         limit: int = 10,
         min_score: float = 0.0,
         article_id: Optional[int] = None,
+        task_type: str = "search",
         use_cache: bool = True,
     ) -> List[Dict[str, Any]]:
         """Perform simple vector search."""
@@ -125,6 +146,7 @@ class SearchService:
             limit=limit,
             min_score=min_score,
             article_id=article_id,
+            task_type=task_type,
             search_type="simple",
         )
 
@@ -135,7 +157,7 @@ class SearchService:
                 return cached_results
 
         # Get embedding and search
-        query_embedding = await self.get_embedding(query, use_cache)
+        query_embedding = await self.get_embedding(query, task_type, use_cache)
 
         results = await self._run_sync_in_thread(
             search_qdrant_simple,
@@ -161,6 +183,7 @@ class SearchService:
         min_score: float = 0.0,
         article_id: Optional[int] = None,
         fusion_method: str = "rrf",
+        task_type: str = "search",
         use_cache: bool = True,
     ) -> List[Dict[str, Any]]:
         """Perform hybrid search combining vector similarity and text matching."""
@@ -171,6 +194,7 @@ class SearchService:
             min_score=min_score,
             article_id=article_id,
             fusion_method=fusion_method,
+            task_type=task_type,
             search_type="hybrid",
         )
 
@@ -181,7 +205,7 @@ class SearchService:
                 return cached_results
 
         # Get embedding and search
-        query_embedding = await self.get_embedding(query, use_cache)
+        query_embedding = await self.get_embedding(query, task_type, use_cache)
 
         results = await self._run_sync_in_thread(
             search_qdrant_hybrid,

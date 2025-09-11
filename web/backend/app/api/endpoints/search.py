@@ -28,6 +28,7 @@ class SearchRequest(BaseModel):
     fusion_method: str = "rrf"  # rrf or dbsf
     article_id: Optional[int] = None
     group_by_article: bool = False
+    task_type: str = "search"  # search, qa, classification, similarity, code
 
 
 class SearchResult(BaseModel):
@@ -96,6 +97,7 @@ async def search_documents(request: SearchRequest):
                 min_score=request.min_score,
                 article_id=request.article_id,
                 fusion_method=request.fusion_method,
+                task_type=request.task_type,
             )
         else:
             search_results = await search_service.search_simple(
@@ -104,6 +106,7 @@ async def search_documents(request: SearchRequest):
                 limit=request.limit,
                 min_score=request.min_score,
                 article_id=request.article_id,
+                task_type=request.task_type,
             )
 
         # Group results by article if requested

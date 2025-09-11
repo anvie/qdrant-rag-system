@@ -15,6 +15,7 @@ from qdrant_client.models import (
     MatchValue,
     Condition,
 )
+from embedding_formatter import format_query
 
 
 def embed_one_ollama(
@@ -323,13 +324,14 @@ def _get_article_by_id(
         raise RuntimeError(f"Failed to retrieve article {article_id}: {e}")
 
 
-def get_article_by_id(client: QdrantClient, collection_name: str, article_id: str) -> List[Dict[str, Any]]:
+def get_article_by_id(
+    client: QdrantClient, collection_name: str, article_id: str
+) -> List[Dict[str, Any]]:
     rv = _get_article_by_id(client, collection_name, article_id)
     if not rv:
         # try to use integer article_id
         rv = _get_article_by_id(client, collection_name, int(article_id))
     return rv or []
-
 
 
 def format_article_content(chunks: List[Dict[str, Any]], article_id: str) -> str:
@@ -496,11 +498,18 @@ def perform_search(args, session: requests.Session) -> None:
 
         # Generate query embedding
         print(f"🔍 Searching for: '{args.query}'")
+
+        # Format query according to model requirements
+        formatted_query = format_query(args.query, args.model, args.task_type)
+
+        if formatted_query != args.query:
+            print(f"📝 Formatted query: '{formatted_query}'")
+
         print("⏳ Generating query embedding...")
 
         embed_start = time.time()
         query_vector = embed_one_ollama(
-            args.query,
+            formatted_query,
             args.model,
             args.ollama_url,
             timeout=args.connection_timeout,
@@ -615,6 +624,7 @@ def interactive_mode(args) -> None:
                 print("\n⚙️ Current Settings:")
                 print(f"  Collection: {args.collection}")
                 print(f"  Model: {args.model}")
+                print(f"  Task Type: {args.task_type}")
                 print(f"  Limit: {args.limit}")
                 print(f"  Min Score: {args.min_score}")
                 print(f"  Output Format: {args.output_format}")
@@ -705,6 +715,9 @@ Examples:
   # Advanced hybrid search with DBSF fusion
   python query_qdrant.py --query "umrah haji" --hybrid --fusion-method dbsf --limit 5
   
+  # Question answering task type for EmbeddingGemma
+  python query_qdrant.py --query "Bagaimana cara shalat yang benar?" --model embeddinggemma:latest --task-type qa
+  
   # Hybrid search with filtering
   python query_qdrant.py --query "puasa ramadan" --hybrid --min-score 0.7 --group-by-article
   
@@ -757,6 +770,19 @@ Examples:
         choices=["rrf", "dbsf"],
         default="rrf",
         help="Fusion method for hybrid search: RRF (Reciprocal Rank Fusion) or DBSF (Distribution-Based Score Fusion)",
+    )
+    parser.add_argument(
+        "--task-type",
+        choices=[
+            "search",
+            "qa",
+            "question_answering",
+            "classification",
+            "similarity",
+            "code",
+        ],
+        default="search",
+        help="Task type for query formatting (affects embedding generation for models like embeddinggemma)",
     )
 
     # Output options

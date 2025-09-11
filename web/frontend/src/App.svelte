@@ -41,10 +41,6 @@
   let currentPage: string = getPageFromHash();
   let sidebarCollapsed: boolean = false;
   let mobileMenuOpen: boolean = false;
-  
-  // Debug logging
-  $: console.log("🔍 App.svelte - currentPage changed to:", currentPage);
-  $: console.log("🌐 Current URL hash:", typeof window !== 'undefined' ? window.location.hash : 'SSR');
 
   const updateHash = (page: string) => {
     if (typeof window === 'undefined') return;
@@ -123,8 +119,6 @@
 
   // Initialize app
   onMount(async () => {
-    console.log("🚀 onMount - currentPage already initialized to:", currentPage);
-    
     await collectionsActions.initialize();
     await collectionsActions.loadAllCollectionStats();
 

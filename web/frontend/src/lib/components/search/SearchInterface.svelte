@@ -1,22 +1,22 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Icon from "@iconify/svelte";
-  
+
   // Components
   import Button from "../common/Button.svelte";
   import Card from "../common/Card.svelte";
   import FormInput from "../common/FormInput.svelte";
   import FormSelect from "../common/FormSelect.svelte";
   import LoadingSpinner from "../common/LoadingSpinner.svelte";
-  
+
   // Stores and services
-  import { 
-    searchActions, 
-    searchQuery, 
-    searchFilters, 
-    searchLoading, 
+  import {
+    searchActions,
+    searchQuery,
+    searchFilters,
+    searchLoading,
     searchHistory,
-    searchStats 
+    searchStats,
   } from "../../stores/search";
   import { collectionsActions, collections } from "../../stores/collections";
 
@@ -31,10 +31,13 @@
   let recentSearches = $searchHistory.slice(0, 5);
 
   // Reactive statements
-  $: collectionsOptions = $collections.map(c => ({ value: c.name, label: c.name }));
+  $: collectionsOptions = $collections.map((c) => ({
+    value: c.name,
+    label: c.name,
+  }));
   $: fusionMethods = [
-    { value: 'rrf', label: 'RRF (Reciprocal Rank Fusion)' },
-    { value: 'dbsf', label: 'DBSF (Distribution-Based Score Fusion)' }
+    { value: "rrf", label: "RRF (Reciprocal Rank Fusion)" },
+    { value: "dbsf", label: "DBSF (Distribution-Based Score Fusion)" },
   ];
 
   // Update recent searches when history changes
@@ -54,7 +57,10 @@
     searchActions.setQuery(target.value);
   };
 
-  const handleFilterChange = (field: keyof typeof $searchFilters, value: any) => {
+  const handleFilterChange = (
+    field: keyof typeof $searchFilters,
+    value: any,
+  ) => {
     searchActions.updateFilters({ [field]: value });
   };
 
@@ -62,11 +68,15 @@
   const handleKeydown = (e: KeyboardEvent) => {
     // Don't handle shortcuts if user is typing in an input/textarea
     const target = e.target as HTMLElement;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+    if (
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.isContentEditable
+    ) {
       return;
     }
-    
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       handleSubmit(e);
     }
   };
@@ -100,7 +110,7 @@
       <Icon icon="material-symbols:search" class="w-5 h-5 text-blue-600" />
       <h2 class="text-lg font-medium text-gray-900">Vector Search</h2>
     </div>
-    
+
     {#if $searchStats.totalResults > 0}
       <div class="flex items-center gap-4 text-sm text-gray-600">
         <span>{$searchStats.totalResults} results</span>
@@ -117,13 +127,13 @@
       <div class="relative">
         <FormInput
           type="text"
-          placeholder={placeholder}
+          {placeholder}
           value={$searchQuery}
           onInput={(value) => searchActions.setQuery(value.toString())}
           disabled={$searchLoading}
           class="pr-12"
         />
-        
+
         <!-- Search Button -->
         <div class="absolute right-2 top-1/2 -translate-y-1/2">
           <Button
@@ -150,19 +160,20 @@
             <FormSelect
               options={collectionsOptions}
               value={$searchFilters.collection}
-              onChange={(value) => handleFilterChange('collection', value)}
+              onChange={(value) => handleFilterChange("collection", value)}
               disabled={$searchLoading}
               placeholder="Select collection"
               class="w-full"
             />
           </div>
-          
+
           <!-- Hybrid Toggle -->
           <label class="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={$searchFilters.hybrid}
-              on:change={(e) => handleFilterChange('hybrid', e.currentTarget.checked)}
+              on:change={(e) =>
+                handleFilterChange("hybrid", e.currentTarget.checked)}
               disabled={$searchLoading}
               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
@@ -177,25 +188,29 @@
           onClick={toggleAdvanced}
           class="flex items-center gap-2"
         >
-          <Icon 
-            icon="material-symbols:tune" 
-            class="w-4 h-4" 
-          />
+          <Icon icon="material-symbols:tune" class="w-4 h-4" />
           <span>Advanced</span>
-          <Icon 
-            icon={showAdvanced ? "material-symbols:expand-less" : "material-symbols:expand-more"} 
-            class="w-4 h-4 transition-transform" 
+          <Icon
+            icon={showAdvanced
+              ? "material-symbols:expand-less"
+              : "material-symbols:expand-more"}
+            class="w-4 h-4 transition-transform"
           />
         </Button>
       </div>
 
       <!-- Advanced Options Panel -->
       {#if showAdvanced}
-        <div class="border-t pt-4 space-y-4 bg-gray-50 -mx-6 px-6 py-4 rounded-b-lg">
+        <div
+          class="border-t pt-4 space-y-4 bg-gray-50 -mx-6 px-6 py-4 rounded-b-lg"
+        >
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Limit -->
             <div>
-              <label for="search-limit" class="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                for="search-limit"
+                class="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Result Limit
               </label>
               <FormInput
@@ -204,7 +219,8 @@
                 min="1"
                 max="100"
                 value={$searchFilters.limit.toString()}
-                onInput={(value) => handleFilterChange('limit', parseInt(value.toString()) || 10)}
+                onInput={(value) =>
+                  handleFilterChange("limit", parseInt(value.toString()) || 10)}
                 disabled={$searchLoading}
                 class="w-full"
               />
@@ -212,7 +228,10 @@
 
             <!-- Min Score -->
             <div>
-              <label for="search-min-score" class="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                for="search-min-score"
+                class="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Min Score
               </label>
               <FormInput
@@ -222,7 +241,11 @@
                 max="1"
                 step="0.1"
                 value={$searchFilters.min_score.toString()}
-                onInput={(value) => handleFilterChange('min_score', parseFloat(value.toString()) || 0)}
+                onInput={(value) =>
+                  handleFilterChange(
+                    "min_score",
+                    parseFloat(value.toString()) || 0,
+                  )}
                 disabled={$searchLoading}
                 class="w-full"
               />
@@ -230,14 +253,17 @@
 
             <!-- Fusion Method (only for hybrid) -->
             <div>
-              <label for="search-fusion-method" class="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                for="search-fusion-method"
+                class="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Fusion Method
               </label>
               <FormSelect
                 id="search-fusion-method"
                 options={fusionMethods}
                 value={$searchFilters.fusion_method}
-                onChange={(value) => handleFilterChange('fusion_method', value)}
+                onChange={(value) => handleFilterChange("fusion_method", value)}
                 disabled={$searchLoading || !$searchFilters.hybrid}
                 class="w-full"
               />
@@ -249,7 +275,11 @@
                 <input
                   type="checkbox"
                   checked={$searchFilters.group_by_article}
-                  on:change={(e) => handleFilterChange('group_by_article', e.currentTarget.checked)}
+                  on:change={(e) =>
+                    handleFilterChange(
+                      "group_by_article",
+                      e.currentTarget.checked,
+                    )}
                   disabled={$searchLoading}
                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
@@ -288,7 +318,7 @@
             Clear
           </Button>
         </div>
-        
+
         <div class="flex flex-wrap gap-2">
           {#each recentSearches as historyItem (historyItem.id)}
             <button
@@ -296,7 +326,10 @@
               on:click={() => searchFromHistory(historyItem)}
               disabled={$searchLoading}
             >
-              <Icon icon="material-symbols:history" class="w-3 h-3 text-gray-400" />
+              <Icon
+                icon="material-symbols:history"
+                class="w-3 h-3 text-gray-400"
+              />
               <span class="max-w-32 truncate">{historyItem.query}</span>
               <span class="text-gray-400">({historyItem.results_count})</span>
             </button>
@@ -305,18 +338,20 @@
       </div>
     {/if}
 
-    <!-- Quick Search Tips -->
-    <div class="text-xs text-gray-500 space-y-1 bg-blue-50 p-3 rounded-lg">
-      <div class="font-medium text-blue-900 mb-2">Search Tips:</div>
-      <div>• Use <kbd class="px-1 py-0.5 bg-white rounded border text-xs">Ctrl+Enter</kbd> to search quickly</div>
-      <div>• Enable "Hybrid Search" for better semantic + keyword matching</div>
-      <div>• Group results by article to see related content together</div>
-    </div>
+    <!-- <!-- Quick Search Tips --> -->
+    <!-- <div class="text-xs text-gray-500 space-y-1 bg-blue-50 p-3 rounded-lg"> -->
+    <!--   <div class="font-medium text-blue-900 mb-2">Search Tips:</div> -->
+    <!--   <div>• Use <kbd class="px-1 py-0.5 bg-white rounded border text-xs">Ctrl+Enter</kbd> to search quickly</div> -->
+    <!--   <div>• Enable "Hybrid Search" for better semantic + keyword matching</div> -->
+    <!--   <div>• Group results by article to see related content together</div> -->
+    <!-- </div> -->
   </div>
 </Card>
 
 <style>
   kbd {
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas,
+      "Liberation Mono", Menlo, monospace;
   }
 </style>
+
