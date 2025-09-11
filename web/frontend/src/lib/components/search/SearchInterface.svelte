@@ -153,22 +153,21 @@
       </div>
 
       <!-- Quick Options Row -->
-      <div class="flex items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div class="flex items-center gap-4 flex-1 min-w-0">
           <!-- Collection Selector -->
-          <div class="min-w-0 flex-1">
+          <div class="flex-1 min-w-[200px]">
             <FormSelect
               options={collectionsOptions}
               value={$searchFilters.collection}
               onChange={(value) => handleFilterChange("collection", value)}
               disabled={$searchLoading}
               placeholder="Select collection"
-              class="w-full"
             />
           </div>
 
           <!-- Hybrid Toggle -->
-          <label class="flex items-center gap-2 text-sm">
+          <label class="flex items-center gap-2 text-sm whitespace-nowrap">
             <input
               type="checkbox"
               checked={$searchFilters.hybrid}
@@ -186,7 +185,7 @@
           variant="ghost"
           size="sm"
           onClick={toggleAdvanced}
-          class="flex items-center gap-2"
+          class="flex items-center gap-2 whitespace-nowrap"
         >
           <Icon icon="material-symbols:tune" class="w-4 h-4" />
           <span>Advanced</span>
@@ -204,12 +203,12 @@
         <div
           class="border-t pt-4 space-y-4 bg-gray-50 -mx-6 px-6 py-4 rounded-b-lg"
         >
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Limit -->
-            <div>
+            <div class="space-y-1">
               <label
                 for="search-limit"
-                class="block text-sm font-medium text-gray-700 mb-1"
+                class="block text-sm font-medium text-gray-700"
               >
                 Result Limit
               </label>
@@ -227,10 +226,10 @@
             </div>
 
             <!-- Min Score -->
-            <div>
+            <div class="space-y-1">
               <label
                 for="search-min-score"
-                class="block text-sm font-medium text-gray-700 mb-1"
+                class="block text-sm font-medium text-gray-700"
               >
                 Min Score
               </label>
@@ -252,10 +251,10 @@
             </div>
 
             <!-- Fusion Method (only for hybrid) -->
-            <div>
+            <div class="space-y-1">
               <label
                 for="search-fusion-method"
-                class="block text-sm font-medium text-gray-700 mb-1"
+                class="block text-sm font-medium text-gray-700"
               >
                 Fusion Method
               </label>
@@ -270,8 +269,8 @@
             </div>
 
             <!-- Group by Article -->
-            <div class="flex items-end">
-              <label class="flex items-center gap-2 text-sm pb-2">
+            <div class="flex items-end pb-2">
+              <label class="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={$searchFilters.group_by_article}
@@ -289,14 +288,15 @@
           </div>
 
           <!-- Advanced Options Actions -->
-          <div class="flex justify-end gap-2 pt-2 border-t">
+          <div class="flex justify-end gap-2 pt-2 border-t border-gray-200">
             <Button
               variant="ghost"
               size="sm"
               onClick={resetFilters}
               disabled={$searchLoading}
+              class="flex items-center gap-1"
             >
-              <Icon icon="material-symbols:refresh" class="w-4 h-4 mr-1" />
+              <Icon icon="material-symbols:refresh" class="w-4 h-4" />
               Reset
             </Button>
           </div>
@@ -354,4 +354,3 @@
       "Liberation Mono", Menlo, monospace;
   }
 </style>
-

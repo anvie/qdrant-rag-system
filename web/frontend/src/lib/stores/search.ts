@@ -221,11 +221,6 @@ export const searchActions = {
           filters,
         };
       });
-
-      notificationActions.success(
-        "Search completed",
-        `Found ${response.total_found} results in ${(response.query_time * 1000).toFixed(0)}ms`,
-      );
     } catch (error: any) {
       console.error("Search failed:", error);
       let errorMessage =

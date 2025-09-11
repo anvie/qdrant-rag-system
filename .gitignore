@@ -6,3 +6,5 @@ qdrant_storage/
 .env
 .env.*
 __pycache__
+*.db
+*.db-*

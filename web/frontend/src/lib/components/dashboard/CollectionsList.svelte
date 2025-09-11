@@ -13,7 +13,8 @@
     collectionsLoading,
     collectionsError,
     operationInProgress,
-    collectionsStats
+    collectionsStats,
+    collectionStatsMap
   } from '../../stores/collections';
   import { notificationActions } from '../../stores/notifications';
 
@@ -372,6 +373,57 @@
                     {formatNumber(collection.vectors_count)}
                   </div>
                   <div class="text-sm text-gray-600">Vectors</div>
+                </div>
+              </div>
+              
+              <!-- Embedding Model Badge -->
+              <div class="mb-3">
+                {#if collection.embedding_model}
+                  <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-full">
+                    <Icon icon="material-symbols:model-training" class="w-4 h-4 text-green-600" />
+                    <span class="text-sm font-medium text-green-800">{collection.embedding_model}</span>
+                    {#if $collectionStatsMap.get(collection.name)?.config?.vector_size}
+                      <span class="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                        {$collectionStatsMap.get(collection.name).config.vector_size}D
+                      </span>
+                    {/if}
+                  </div>
+                {:else}
+                  <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full">
+                    <Icon icon="material-symbols:help" class="w-4 h-4 text-gray-500" />
+                    <span class="text-sm font-medium text-gray-600">Model not specified</span>
+                    {#if $collectionStatsMap.get(collection.name)?.config?.vector_size}
+                      <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                        {$collectionStatsMap.get(collection.name).config.vector_size}D
+                      </span>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+
+              <!-- Collection metadata -->
+              <div class="space-y-2 mb-4">
+                {#if collection.description}
+                  <div class="flex items-start gap-2 text-sm">
+                    <Icon icon="material-symbols:description" class="w-4 h-4 text-gray-500 mt-0.5" />
+                    <span class="text-gray-600 italic">{collection.description}</span>
+                  </div>
+                {/if}
+                
+                <!-- Technical Details -->
+                <div class="flex items-center justify-between text-xs text-gray-500">
+                  {#if $collectionStatsMap.get(collection.name)?.config?.distance}
+                    <div class="flex items-center gap-1">
+                      <Icon icon="material-symbols:functions" class="w-3 h-3" />
+                      <span class="capitalize">{$collectionStatsMap.get(collection.name).config.distance}</span>
+                    </div>
+                  {/if}
+                  {#if collection.created_at}
+                    <div class="flex items-center gap-1">
+                      <Icon icon="material-symbols:schedule" class="w-3 h-3" />
+                      <span>{new Date(collection.created_at).toLocaleDateString()}</span>
+                    </div>
+                  {/if}
                 </div>
               </div>
 

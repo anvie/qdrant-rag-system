@@ -7,6 +7,7 @@ pydantic-settings==2.10.1
 pydantic_core==2.33.2
 qdrant-client==1.15.1
 requests==2.32.5
+sqlalchemy==2.0.36
 uvicorn==0.35.0
 uvloop==0.21.0
 watchfiles==1.1.0

@@ -12,6 +12,9 @@ export interface Collection {
   points_count: number;
   vectors_count: number;
   status: string;
+  embedding_model?: string;
+  created_at?: string;
+  description?: string;
 }
 
 export interface CollectionStats {
@@ -23,6 +26,9 @@ export interface CollectionStats {
     vector_size: number;
     distance: string;
   };
+  embedding_model?: string;
+  created_at?: string;
+  description?: string;
 }
 
 export interface SystemStatus {
@@ -96,6 +102,20 @@ export interface ArticleResponse {
   title: string;
   chunks: SearchResult[];
   total_chunks: number;
+}
+
+export interface EmbeddingModel {
+  name: string;
+  display_name: string;
+  description?: string;
+  vector_size: number;
+  provider?: string;
+  is_available: string;
+  capabilities?: string[];
+  performance?: string;
+  use_cases?: string[];
+  multilingual?: boolean;
+  max_tokens?: number;
 }
 
 class ApiService {
@@ -172,8 +192,10 @@ class ApiService {
 
   async createCollection(data: {
     name: string;
-    vector_size: number;
+    vector_size?: number;
     distance_metric?: string;
+    embedding_model?: string;
+    description?: string;
   }): Promise<Collection> {
     const response = await this.client.post<Collection>("/collections/", data);
     return response.data;
@@ -181,6 +203,25 @@ class ApiService {
 
   async deleteCollection(collectionName: string): Promise<{ message: string }> {
     const response = await this.client.delete(`/collections/${collectionName}`);
+    return response.data;
+  }
+
+  // Embedding model endpoints
+  async getAvailableEmbeddingModels(): Promise<EmbeddingModel[]> {
+    const response = await this.client.get<EmbeddingModel[]>("/collections/models/available");
+    return response.data;
+  }
+
+  async getRecommendedEmbeddingModels(useCase?: string): Promise<EmbeddingModel[]> {
+    const url = useCase 
+      ? `/collections/models/recommended?use_case=${useCase}`
+      : "/collections/models/recommended";
+    const response = await this.client.get<EmbeddingModel[]>(url);
+    return response.data;
+  }
+
+  async validateEmbeddingModel(modelName: string): Promise<{ valid: boolean; vector_size?: number; error?: string }> {
+    const response = await this.client.post(`/collections/models/${modelName}/validate`);
     return response.data;
   }
 

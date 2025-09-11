@@ -8,33 +8,36 @@
 </script>
 
 <script lang="ts">
-  import Icon from '@iconify/svelte';
+  import Icon from "@iconify/svelte";
 
   // FormSelect component props
-  export let value: string | number = '';
+  export let value: string | number = "";
   export let options: SelectOption[] = [];
-  export let placeholder: string = 'Select an option';
-  export let label: string = '';
+  export let placeholder: string = "Select an option";
+  export let label: string = "";
   export let required: boolean = false;
   export let disabled: boolean = false;
-  export let error: string = '';
-  export let helperText: string = '';
+  export let error: string = "";
+  export let helperText: string = "";
   export let icon: string | null = null;
-  export let id: string = '';
+  export let id: string = "";
 
   // Generate unique ID if not provided
   const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
 
   // Event handlers
-  export let onChange: ((value: string | number) => void) | undefined = undefined;
+  export let onChange: ((value: string | number) => void) | undefined =
+    undefined;
   export let onBlur: ((event: FocusEvent) => void) | undefined = undefined;
   export let onFocus: ((event: FocusEvent) => void) | undefined = undefined;
 
   // Handle change events
   const handleChange = (event: Event) => {
     const target = event.target as HTMLSelectElement;
-    const selectedOption = options.find(opt => opt.value.toString() === target.value);
-    const newValue = selectedOption?.value || '';
+    const selectedOption = options.find(
+      (opt) => opt.value.toString() === target.value,
+    );
+    const newValue = selectedOption?.value || "";
     value = newValue;
     onChange?.(newValue);
   };
@@ -49,19 +52,20 @@
 
   // Reactive classes
   $: hasError = error && error.length > 0;
-  $: baseClasses = 'w-full px-3 py-2 text-sm border rounded-lg transition-colors focus:outline-none focus:ring-2 appearance-none bg-no-repeat bg-right';
-  $: stateClasses = hasError 
-    ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500';
-  $: disabledClasses = disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white';
-  $: iconClasses = icon ? 'pl-10' : '';
+  $: baseClasses =
+    "w-full px-3 py-2 text-sm border rounded-lg transition-colors focus:outline-none focus:ring-2 appearance-none bg-no-repeat bg-right";
+  $: stateClasses = hasError
+    ? "border-red-300 focus:ring-red-500 focus:border-red-500"
+    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500";
+  $: disabledClasses = disabled ? "bg-gray-100 cursor-not-allowed" : "bg-white";
+  $: iconClasses = icon ? "pl-10" : "";
   $: selectClasses = `${baseClasses} ${stateClasses} ${disabledClasses} ${iconClasses} pr-10`;
 
   // Get selected option for display
-  $: selectedOption = options.find(opt => opt.value === value);
+  $: selectedOption = options.find((opt) => opt.value === value);
 </script>
 
-<div class="w-full">
+<div class="w-64">
   <!-- Label -->
   {#if label}
     <label for={selectId} class="block text-sm font-medium text-gray-700 mb-2">
@@ -76,8 +80,10 @@
   <div class="relative">
     <!-- Icon -->
     {#if icon}
-      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <Icon icon={icon} class="w-4 h-4 text-gray-400" />
+      <div
+        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+      >
+        <Icon {icon} class="w-4 h-4 text-gray-400" />
       </div>
     {/if}
 
@@ -97,10 +103,10 @@
           {placeholder}
         </option>
       {/if}
-      
+
       {#each options as option (option.value)}
-        <option 
-          value={option.value} 
+        <option
+          value={option.value}
           disabled={option.disabled}
           selected={option.value === value}
         >
@@ -110,8 +116,13 @@
     </select>
 
     <!-- Dropdown arrow -->
-    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-      <Icon icon="material-symbols:keyboard-arrow-down" class="w-5 h-5 text-gray-400" />
+    <div
+      class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"
+    >
+      <Icon
+        icon="material-symbols:keyboard-arrow-down"
+        class="w-5 h-5 text-gray-400"
+      />
     </div>
   </div>
 
@@ -139,3 +150,4 @@
     {/if}
   </div>
 </div>
+

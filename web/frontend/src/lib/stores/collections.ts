@@ -22,8 +22,10 @@ export type OperationType = "create" | "delete" | "refresh" | null;
 
 export interface CreateCollectionData {
   name: string;
-  vector_size: number;
+  vector_size?: number;
   distance_metric?: string;
+  embedding_model?: string;
+  description?: string;
 }
 
 // Initial state
@@ -62,6 +64,12 @@ export const collectionsError = derived(
 export const operationInProgress = derived(
   collectionsStore,
   ($collections) => $collections.operationInProgress,
+);
+
+// Derived store for individual collection stats Map
+export const collectionStatsMap = derived(
+  collectionsStore,
+  ($collections) => $collections.collectionStats,
 );
 
 // Derived store for collection statistics
@@ -412,6 +420,42 @@ export const collectionsActions = {
     );
 
     await Promise.allSettled(loadPromises);
+  },
+
+  /**
+   * Get available embedding models
+   */
+  async getAvailableEmbeddingModels() {
+    try {
+      return await api.getAvailableEmbeddingModels();
+    } catch (error) {
+      console.error("Failed to load embedding models:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get recommended embedding models
+   */
+  async getRecommendedEmbeddingModels(useCase?: string) {
+    try {
+      return await api.getRecommendedEmbeddingModels(useCase);
+    } catch (error) {
+      console.error("Failed to load recommended models:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Validate an embedding model
+   */
+  async validateEmbeddingModel(modelName: string) {
+    try {
+      return await api.validateEmbeddingModel(modelName);
+    } catch (error) {
+      console.error(`Failed to validate model ${modelName}:`, error);
+      throw error;
+    }
   },
 };
 

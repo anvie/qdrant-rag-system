@@ -18,6 +18,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from api.routes import router
 from core.config import settings
 from core.websocket import websocket_manager
+from core.database import init_database, DatabaseManager
+from services.embedding_models import init_embedding_models
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,7 +32,29 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("🚀 Starting Qdrant RAG Web UI")
     logger.info(f"API docs available at: {settings.API_V1_STR}/docs")
+
+    # Initialize database
+    logger.info("📊 Initializing database...")
+    try:
+        if init_database():
+            logger.info("✅ Database initialized successfully")
+        else:
+            logger.error("❌ Database initialization failed")
+    except Exception as e:
+        logger.error(f"❌ Database initialization error: {e}")
+
+    # Initialize embedding models
+    logger.info("🤖 Initializing embedding models...")
+    try:
+        if init_embedding_models():
+            logger.info("✅ Embedding models initialized successfully")
+        else:
+            logger.warning("⚠️ Embedding models initialization had issues")
+    except Exception as e:
+        logger.error(f"❌ Embedding models initialization error: {e}")
+
     yield
+
     # Shutdown
     logger.info("👋 Shutting down Qdrant RAG Web UI")
 
@@ -72,10 +96,14 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Detailed health check."""
+    # Check database health
+    db_health = DatabaseManager.health_check()
+
     return {
         "status": "healthy",
         "qdrant_url": settings.QDRANT_URL,
         "ollama_url": settings.OLLAMA_URL,
+        "database": db_health,
     }
 
 

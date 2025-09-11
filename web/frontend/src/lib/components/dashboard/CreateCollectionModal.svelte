@@ -7,6 +7,8 @@
   import { collectionsActions, operationInProgress, type CreateCollectionData } from '../../stores/collections';
   import { notificationActions } from '../../stores/notifications';
   import type { SelectOption } from '../common/FormSelect.svelte';
+  import { onMount } from 'svelte';
+  import type { EmbeddingModel } from '../../services/api';
 
   // Modal props
   export let show: boolean = false;
@@ -15,9 +17,16 @@
   // Form data
   let formData: CreateCollectionData = {
     name: '',
-    vector_size: 384,
-    distance_metric: 'cosine'
+    vector_size: undefined,
+    distance_metric: 'cosine',
+    embedding_model: '',
+    description: ''
   };
+  
+  // Embedding models
+  let availableModels: EmbeddingModel[] = [];
+  let loadingModels = true;
+  let selectedModelInfo: EmbeddingModel | null = null;
 
   // Form validation
   let errors: Record<string, string> = {};
@@ -47,6 +56,40 @@
       description: 'Dot product similarity - Good for non-normalized vectors. Measures both angle and magnitude.'
     }
   ];
+  
+  // Load embedding models on mount
+  onMount(async () => {
+    try {
+      loadingModels = true;
+      const modelsArray = await collectionsActions.getAvailableEmbeddingModels();
+      availableModels = modelsArray.filter(m => m.is_available !== 'false');
+      
+      // Set default model if available
+      if (availableModels.length > 0) {
+        const defaultModel = availableModels.find(m => m.name === 'embeddinggemma:latest') || availableModels[0];
+        formData.embedding_model = defaultModel.name;
+        selectedModelInfo = defaultModel;
+        formData.vector_size = defaultModel.vector_size;
+      }
+    } catch (error) {
+      console.error('Failed to load embedding models:', error);
+      notificationActions.error('Failed to load embedding models', 'Please check your Ollama connection');
+    } finally {
+      loadingModels = false;
+    }
+  });
+  
+  // Update vector size when model changes
+  const handleModelChange = async (value: string | number) => {
+    formData.embedding_model = String(value);
+    const model = availableModels.find(m => m.name === value);
+    if (model) {
+      selectedModelInfo = model;
+      formData.vector_size = model.vector_size;
+    }
+    serverError = '';
+    validateForm();
+  };
 
   // Validation rules
   const validateForm = () => {
@@ -63,13 +106,9 @@
       newErrors.name = 'Collection name already exists';
     }
 
-    // Vector size validation
-    if (!formData.vector_size || formData.vector_size <= 0) {
-      newErrors.vector_size = 'Vector size must be a positive number';
-    } else if (formData.vector_size > 4096) {
-      newErrors.vector_size = 'Vector size cannot exceed 4096 dimensions';
-    } else if (!Number.isInteger(formData.vector_size)) {
-      newErrors.vector_size = 'Vector size must be a whole number';
+    // Embedding model validation
+    if (!formData.embedding_model) {
+      newErrors.embedding_model = 'Embedding model is required';
     }
 
     // Distance metric validation
@@ -89,9 +128,9 @@
     validateForm();
   };
 
-  const handleVectorSizeInput = (value: string | number) => {
-    formData.vector_size = Number(value);
-    serverError = ''; // Clear server error when user types
+  const handleDescriptionInput = (value: string | number) => {
+    formData.description = String(value);
+    serverError = '';
     validateForm();
   };
 
@@ -172,8 +211,10 @@
     // Reset form
     formData = {
       name: '',
-      vector_size: 384,
-      distance_metric: 'cosine'
+      vector_size: selectedModelInfo?.vector_size,
+      distance_metric: 'cosine',
+      embedding_model: selectedModelInfo?.name || '',
+      description: ''
     };
     errors = {};
     serverError = '';
@@ -228,21 +269,33 @@
       icon="material-symbols:database"
       onInput={handleNameInput}
     />
+    
+    <!-- Embedding Model -->
+    <FormSelect
+      label="Embedding Model"
+      bind:value={formData.embedding_model}
+      options={availableModels.map(model => ({
+        value: model.name,
+        label: model.display_name || model.name,
+        description: `${model.description || ''} (${model.vector_size} dimensions)`
+      }))}
+      required={true}
+      disabled={loadingModels}
+      error={errors.embedding_model || ''}
+      helperText={loadingModels ? 'Loading models...' : selectedModelInfo?.description || 'Select the embedding model for this collection'}
+      icon="material-symbols:model-training"
+      onChange={handleModelChange}
+    />
 
-    <!-- Vector Size -->
+    <!-- Vector Size (Read-only) -->
     <FormInput
       label="Vector Size"
       type="number"
       bind:value={formData.vector_size}
-      placeholder="Enter vector dimensions"
-      required={true}
-      min={1}
-      max={4096}
-      step={1}
-      error={errors.vector_size || ''}
-      helperText="Number of dimensions in your vectors (e.g., 384 for sentence-transformers)"
+      placeholder="Auto-detected from model"
+      disabled={true}
+      helperText={selectedModelInfo ? `Automatically set by ${selectedModelInfo.name}` : 'Select an embedding model first'}
       icon="material-symbols:bar-chart"
-      onInput={handleVectorSizeInput}
     />
 
     <!-- Distance Metric -->
@@ -256,6 +309,18 @@
       icon="material-symbols:functions"
       onChange={handleDistanceMetricChange}
     />
+    
+    <!-- Description (Optional) -->
+    <FormInput
+      label="Description (Optional)"
+      type="text"
+      bind:value={formData.description}
+      placeholder="Brief description of this collection"
+      required={false}
+      helperText="Add a description to help identify this collection's purpose"
+      icon="material-symbols:description"
+      onInput={handleDescriptionInput}
+    />
 
     <!-- Information Box -->
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -263,7 +328,10 @@
         <Icon icon="material-symbols:info" class="w-5 h-5 text-blue-600 mt-0.5" />
         <div class="text-sm text-blue-800">
           <p class="font-medium mb-1">Collection Settings</p>
-          <p>These settings cannot be changed after creation. Make sure your vector size matches your embedding model's output dimensions.</p>
+          <p>The embedding model and distance metric cannot be changed after creation. Each collection can use a different embedding model.</p>
+          {#if selectedModelInfo?.use_cases && selectedModelInfo.use_cases.length > 0}
+            <p class="mt-1"><span class="font-medium">Best for:</span> {selectedModelInfo.use_cases.join(', ')}</p>
+          {/if}
         </div>
       </div>
     </div>

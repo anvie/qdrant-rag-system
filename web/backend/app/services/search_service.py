@@ -8,14 +8,20 @@ from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime, timedelta
 import sys
 import os
+import logging
 
 from app.core.config import settings
+from app.core.database import get_db_session
+from app.models.collection import Collection as CollectionModel
 
 # Add parent directories to path to import existing modules
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../.."))
 
 from qdrant_client import QdrantClient
 import requests
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 # Import search functions from parent directory
 try:
@@ -86,20 +92,56 @@ class SearchService:
         sorted_items = sorted(kwargs.items())
         return str(hash(tuple(sorted_items)))
 
+    def get_collection_embedding_model(self, collection_name: str) -> str:
+        """Get the embedding model for a specific collection."""
+        try:
+            with get_db_session() as db:
+                collection_meta = (
+                    db.query(CollectionModel)
+                    .filter(CollectionModel.name == collection_name)
+                    .first()
+                )
+
+                if collection_meta and collection_meta.embedding_model:
+                    logger.info(
+                        f"Using collection-specific model '{collection_meta.embedding_model}' for collection '{collection_name}'"
+                    )
+                    return collection_meta.embedding_model
+                else:
+                    logger.warning(
+                        f"No collection-specific model found for '{collection_name}', using default '{self.embedding_model}'"
+                    )
+                    return self.embedding_model
+
+        except Exception as e:
+            logger.error(
+                f"Failed to get collection embedding model for '{collection_name}': {e}"
+            )
+            logger.info(f"Falling back to default model '{self.embedding_model}'")
+            return self.embedding_model
+
     async def get_embedding(
-        self, text: str, task_type: str = "search", use_cache: bool = True
+        self,
+        text: str,
+        model: str = None,
+        task_type: str = "search",
+        use_cache: bool = True,
     ) -> List[float]:
         """Get embedding for text with optional caching and query formatting."""
+        # Use provided model or fall back to default
+        embedding_model = model or self.embedding_model
+
         # Format the text according to model requirements
         try:
-            formatted_text = format_query(text, self.embedding_model, task_type)
+            formatted_text = format_query(text, embedding_model, task_type)
         except NameError:
             # Fallback if format_query is not available
             formatted_text = text
 
-        print(f"Formatted text: {formatted_text}")
+        print(f"Formatted text: {formatted_text} (model: {embedding_model})")
 
-        cache_key = f"{formatted_text}:{task_type}"
+        # Include model in cache key to prevent cross-model conflicts
+        cache_key = f"{formatted_text}:{task_type}:{embedding_model}"
 
         if use_cache:
             cached_embedding, timestamp = self._embedding_cache.get(
@@ -108,16 +150,11 @@ class SearchService:
             if cached_embedding and self._is_cache_valid(timestamp):
                 return cached_embedding
 
-        # if formatted_text != text:
-        #     print(f"Generate embedding for formatted text: {formatted_text} (original: {text}) with model {self.embedding_model}")
-        # else:
-        #     print(f"Generate embedding for text: {text} with model {self.embedding_model}")
-
         # Generate new embedding
         embedding = await self._run_sync_in_thread(
             embed_one_ollama,
             formatted_text,
-            self.embedding_model,
+            embedding_model,
             self.ollama_url,
             120,
             self.http_session,
@@ -139,7 +176,10 @@ class SearchService:
         task_type: str = "search",
         use_cache: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Perform simple vector search."""
+        """Perform simple vector search with collection-specific embedding model."""
+        # Get collection-specific embedding model
+        embedding_model = self.get_collection_embedding_model(collection)
+
         cache_key = self._get_cache_key(
             query=query,
             collection=collection,
@@ -148,6 +188,7 @@ class SearchService:
             article_id=article_id,
             task_type=task_type,
             search_type="simple",
+            embedding_model=embedding_model,  # Include model in cache key
         )
 
         # Check cache
@@ -156,8 +197,10 @@ class SearchService:
             if cached_results and self._is_cache_valid(timestamp):
                 return cached_results
 
-        # Get embedding and search
-        query_embedding = await self.get_embedding(query, task_type, use_cache)
+        # Get embedding using collection-specific model
+        query_embedding = await self.get_embedding(
+            query, embedding_model, task_type, use_cache
+        )
 
         results = await self._run_sync_in_thread(
             search_qdrant_simple,
@@ -186,7 +229,10 @@ class SearchService:
         task_type: str = "search",
         use_cache: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Perform hybrid search combining vector similarity and text matching."""
+        """Perform hybrid search combining vector similarity and text matching with collection-specific embedding model."""
+        # Get collection-specific embedding model
+        embedding_model = self.get_collection_embedding_model(collection)
+
         cache_key = self._get_cache_key(
             query=query,
             collection=collection,
@@ -196,6 +242,7 @@ class SearchService:
             fusion_method=fusion_method,
             task_type=task_type,
             search_type="hybrid",
+            embedding_model=embedding_model,  # Include model in cache key
         )
 
         # Check cache
@@ -204,8 +251,10 @@ class SearchService:
             if cached_results and self._is_cache_valid(timestamp):
                 return cached_results
 
-        # Get embedding and search
-        query_embedding = await self.get_embedding(query, task_type, use_cache)
+        # Get embedding using collection-specific model
+        query_embedding = await self.get_embedding(
+            query, embedding_model, task_type, use_cache
+        )
 
         results = await self._run_sync_in_thread(
             search_qdrant_hybrid,
