@@ -170,14 +170,6 @@ Start both backend and frontend servers simultaneously:
 ./qras web
 ```
 
-**Features:**
-
-- **One Command**: Starts both FastAPI backend and Svelte frontend
-- **Unified Management**: Both services managed from single process
-- **Clean Shutdown**: Ctrl+C stops both services gracefully
-- **Real-time Status**: Shows startup progress and service URLs
-- **Error Handling**: Validates dependencies and directories
-
 **Output:**
 
 ```
@@ -359,22 +351,6 @@ Use with: `./qras query "test" --config-file config.json`
   --system-prompt "You are a technical expert. Provide detailed explanations."
 ```
 
-### Migration from Old Scripts
-
-If you were using the old individual scripts, here's how to migrate:
-
-```bash
-# Old way
-python query_qdrant.py --query "test" --hybrid
-python index_qdrant.py --json-file data.json --recreate
-python chat_rag.py --llm-model llama3
-
-# New unified way
-./qras query "test" --hybrid
-./qras index --input-path data.json --recreate
-./qras chat --interactive --chat-model llama3
-```
-
 ## Development
 
 ### Project Architecture
@@ -384,14 +360,6 @@ The system is built with a clean separation between:
 - **Shared Library (`lib/`)**: Common functionality used by both CLI and web
 - **CLI Tools (`cli/`)**: Command-line interfaces for different operations
 - **Web Interface (`web/`)**: FastAPI backend + Svelte frontend
-
-### Key Features
-
-- **Environment-based imports**: Uses `PYTHONPATH` instead of sys.path hacks
-- **Shared components**: DRY principle - write once, use everywhere
-- **Professional structure**: Follows Python packaging best practices
-- **Configurable**: Environment variables and config files
-- **Extensible**: Easy to add new models, search types, or CLI commands
 
 ### Common Issues
 
@@ -466,14 +434,6 @@ docker run -p 6333:6333 qdrant/qdrant
    ```bash
    ./qras chat --interactive  # Streaming enabled by default
    ```
-
-## License
-
-[Add your license here]
-
-## Contributing
-
-[Add contribution guidelines]
 
 ## Acknowledgments
 
