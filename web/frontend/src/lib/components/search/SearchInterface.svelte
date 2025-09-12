@@ -25,6 +25,7 @@
   export let showAdvancedOptions: boolean = false;
   export let showHistory: boolean = true;
   export let placeholder: string = "Search your documents...";
+  export let hideCollectionSelector: boolean = false;
 
   // Local state
   let showAdvanced = showAdvancedOptions;
@@ -155,16 +156,18 @@
       <!-- Quick Options Row -->
       <div class="flex items-center justify-between gap-4 flex-wrap">
         <div class="flex items-center gap-4 flex-1 min-w-0">
-          <!-- Collection Selector -->
-          <div class="flex-1 min-w-[200px]">
-            <FormSelect
-              options={collectionsOptions}
-              value={$searchFilters.collection}
-              onChange={(value) => handleFilterChange("collection", value)}
-              disabled={$searchLoading}
-              placeholder="Select collection"
-            />
-          </div>
+          {#if !hideCollectionSelector}
+            <!-- Collection Selector -->
+            <div class="flex-1 min-w-[200px]">
+              <FormSelect
+                options={collectionsOptions}
+                value={$searchFilters.collection}
+                onChange={(value) => handleFilterChange("collection", value)}
+                disabled={$searchLoading}
+                placeholder="Select collection"
+              />
+            </div>
+          {/if}
 
           <!-- Hybrid Toggle -->
           <label class="flex items-center gap-2 text-sm whitespace-nowrap">

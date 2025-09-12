@@ -65,7 +65,7 @@
   $: selectedOption = options.find((opt) => opt.value === value);
 </script>
 
-<div class="w-64">
+<div class="w-full">
   <!-- Label -->
   {#if label}
     <label for={selectId} class="block text-sm font-medium text-gray-700 mb-2">
@@ -150,4 +150,3 @@
     {/if}
   </div>
 </div>
-

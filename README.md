@@ -1,264 +1,413 @@
 # Qdrant RAG System
 
-A powerful Retrieval-Augmented Generation (RAG) system that combines Qdrant vector database with LLMs for intelligent, context-aware chat and search capabilities.
+A comprehensive Retrieval-Augmented Generation (RAG) system that combines semantic search with LLM generation, featuring both CLI tools and a web interface.
 
 ## Features
 
-- 🔍 **Semantic Vector Search**: Search documents using semantic similarity
-- 🤖 **RAG Chat System**: Context-aware chat powered by LLMs with retrieved documents
-- 📚 **Multiple Data Sources**: Index from JSON files or markdown directories
-- 🔄 **Hybrid Search**: Combines vector similarity with keyword matching for better relevance
-- 📖 **Article Reader**: Read complete articles by ID with all chunks
-- 💬 **Interactive Modes**: Both search and chat interfaces with rich commands
-- 🚀 **Streaming Responses**: Real-time streaming of LLM responses
-- 📊 **Source Citations**: Track and display sources for generated responses
+- **CLI Interface**: Use CLI for indexing, searching, and chatting
+- **Semantic Vector Search**: Search documents using semantic similarity
+- **RAG Chat System**: Context-aware chat powered by LLMs with retrieved documents
+- **Multiple Data Sources**: Index from JSON files or markdown directories
+- **Hybrid Search**: Combines vector similarity with keyword matching for better relevance
+- **Interactive Modes**: Both search and chat interfaces with rich commands
+- **Streaming Responses**: Real-time streaming of LLM responses
+- **Web Interface**: FastAPI backend with Svelte frontend.
 
-## Prerequisites
+## Getting Started
+
+### Prerequisites
 
 - Python 3.9+
-- Docker (for Qdrant)
-- Ollama installed locally or accessible remotely
-- At least one embedding model and one LLM model in Ollama
+- [Ollama](https://ollama.ai) installed and running
+- [Qdrant](https://qdrant.tech) vector database running
 
-## Installation
+### Installation
 
-1. Clone the repository:
+1. **Install Python dependencies:**
 
-```bash
-git clone https://github.com/anvie/qdrant-rag-system.git
-cd ollama
-```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-2. Create and activate virtual environment:
+2. **Start required services:**
 
-```bash
-python3 -m venv env
-source env/bin/activate  # On Windows: env\Scripts\activate
-```
+   ```bash
+   # Start Qdrant (using Docker)
+   docker run -p 6333:6333 -p 6334:6334 \
+       -v $(pwd)/qdrant_storage:/qdrant/storage:z \
+       qdrant/qdrant
 
-3. Install dependencies:
+   # Start Ollama and pull required models
+   ollama serve
+   ollama pull bge-m3:567m
+   ollama pull llama3
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+3. **Make the CLI executable:**
+   ```bash
+   chmod +x ./qras
+   ```
 
-4. Start Qdrant using Docker:
+## CLI Usage
 
-```bash
-docker run -p 6333:6333 -p 6334:6334 \
-    -v $(pwd)/qdrant_storage:/qdrant/storage:z \
-    qdrant/qdrant
-```
+### Unified CLI Interface
 
-5. Ensure Ollama is running:
-
-```bash
-# Check if Ollama is running
-curl http://localhost:11434/api/tags
-
-# Or use a remote Ollama instance
-# Update --ollama-url parameter in scripts
-```
-
-## Usage
-
-### 1. Indexing Documents
-
-#### Index from JSON file:
+Use the `./qras` script as your main entry point:
 
 ```bash
-python index_qdrant.py \
-    --json-file articles_clean.json \
-    --ollama-url http://localhost:11434 \
-    --model embeddinggemma:latest \
-    --recreate
+# Show help
+./qras help
+
+# Search documents
+./qras query "machine learning algorithms"
+./qras query "what is neural network" --hybrid --limit 5
+
+# Index documents
+./qras index --input-path ./documents --collection docs
+./qras index --input-path ./articles.json --collection articles --recreate
+
+# Interactive chat
+./qras chat --interactive
+./qras chat "What is machine learning?" --chat-model llama3
+
+# Start web interface (backend + frontend)
+./qras web
 ```
 
-#### Index from markdown directory:
+### Individual Commands
+
+#### Search (`query`)
+
+Search your indexed documents with semantic or hybrid search:
 
 ```bash
-python index_qdrant.py \
-    --scan-dir docs_example \
-    --ollama-url http://localhost:11434 \
-    --model bge-m3:567m \
-    --recreate
+# Basic search
+./qras query "machine learning algorithms"
+
+# Interactive search mode
+./qras query --interactive
+
+# Hybrid search (vector + keyword)
+./qras query "neural networks" --hybrid --limit 5
+
+# Save results to file
+./qras query "deep learning" --output-format json --output results.json
+
+# Show specific article
+./qras query --article-id 123 --collection articles
 ```
 
-#### Parameters:
+**Key Options:**
 
-- `--json-file`: Path to JSON file containing articles
-- `--scan-dir`: Directory to scan for markdown files (overrides --json-file)
-- `--collection`: Qdrant collection name (default: "articles")
-- `--model`: Ollama embedding model to use
-- `--recreate`: Recreate collection from scratch
-- `--batch-size`: Number of chunks to process in batch
+- `--hybrid`: Use hybrid search (vector + keyword matching)
+- `--limit`: Maximum number of results (default: 10)
+- `--output-format`: `detailed`, `compact`, or `json`
+- `--collection`: Collection to search (default: docs)
+- `--interactive`: Interactive search mode
+
+#### Index (`index`)
+
+Index documents into the vector database:
+
+```bash
+# Index a directory of documents
+./qras index --input-path ./documents --collection docs
+
+# Index JSON files
+./qras index --input-path ./articles.json --collection articles
+
+# Recreate collection from scratch
+./qras index --input-path ./data --recreate
+
+# Custom chunking settings
+./qras index --input-path ./docs --chunk-size 200 --chunk-overlap 50
+
+# Show collection info
+./qras index --info
+./qras index --info --collection docs
+```
+
+**Key Options:**
+
+- `--input-path`: Path to documents directory or file
+- `--collection`: Collection name (default: docs)
+- `--recreate`: Delete and recreate collection
 - `--chunk-size`: Words per chunk (default: 150)
-- `--chunk-overlap`: Overlapping words between chunks (default: 30)
-- `--max-chunks-per-article`: Maximum chunks per article (default: 10)
+- `--file-type`: `auto`, `json`, or `markdown`
 
-### 2. Searching Documents
+#### Chat (`chat`)
 
-#### Basic search:
-
-```bash
-python query_qdrant.py --query "What is a DocType?"
-```
-
-#### Hybrid search (recommended):
+Interactive RAG chat combining search with LLM generation:
 
 ```bash
-python query_qdrant.py \
-    --query "database operations" \
-    --hybrid \
-    --limit 5
+# Interactive chat mode
+./qras chat --interactive
+
+# Single question
+./qras chat "What is machine learning?"
+
+# Use different models
+./qras chat --interactive --embedding-model bge-m3:567m --chat-model llama3
+
+# Hybrid search in chat
+./qras chat --interactive --hybrid --search-limit 3
 ```
 
-#### Interactive search mode:
+**Key Options:**
+
+- `--interactive`: Start interactive chat mode
+- `--embedding-model`: Model for search embeddings
+- `--chat-model`: LLM for response generation
+- `--search-limit`: Max sources to retrieve (default: 5)
+- `--hybrid`: Use hybrid search
+
+#### Web Interface (`web`)
+
+Start both backend and frontend servers simultaneously:
 
 ```bash
-python query_qdrant.py --interactive --hybrid
+# Start web interface (backend + frontend)
+./qras web
 ```
 
-Interactive commands:
+**Features:**
 
-- `help` - Show available commands
-- `history` - Show query history
-- `stats` - Show collection statistics
-- `settings` - Show current settings
-- `read <id>` - Read full article by ID
-- `quit/exit/q` - Exit
+- **One Command**: Starts both FastAPI backend and Svelte frontend
+- **Unified Management**: Both services managed from single process
+- **Clean Shutdown**: Ctrl+C stops both services gracefully
+- **Real-time Status**: Shows startup progress and service URLs
+- **Error Handling**: Validates dependencies and directories
 
-### 3. RAG Chat System
+**Output:**
 
-#### Start RAG chat:
+```
+Starting Qdrant RAG Web Services...
+====================================
+
+Starting backend server on http://localhost:8000...
+Starting frontend server on http://localhost:5173...
+
+Web services are starting up...
+Backend API: http://localhost:8000
+Frontend UI: http://localhost:5173
+
+Press Ctrl+C to stop all services
+```
+
+**Requirements:**
+
+- Node.js and npm installed
+- Backend dependencies installed (`pip install -r web/backend/app/requirements.txt`)
+- Frontend dependencies installed (`cd web/frontend && npm install`)
+
+## Web Interface Details
+
+### Quick Start (Recommended)
+
+Start both backend and frontend with a single command:
 
 ```bash
-python chat_rag.py \
-    --llm-model llama2 \
-    --embedding-model bge-m3:567m \
-    --show-sources
+# Start both web backend and frontend simultaneously
+./qras web
 ```
 
-#### With streaming responses:
+- **Backend API**: http://localhost:8000
+- **Frontend UI**: http://localhost:5173
+- **API Docs**: http://localhost:8000/api/v1/docs
+
+Press `Ctrl+C` to stop both services.
+
+### Manual Setup (Alternative)
+
+If you prefer to run services separately:
+
+#### Backend (FastAPI)
 
 ```bash
-python chat_rag.py \
-    --llm-model mistral \
-    --stream \
-    --show-sources \
-    --top-k 5
+cd web/backend/app
+python main.py
 ```
 
-#### Chat commands:
+#### Frontend (Svelte)
 
-- `help` - Show available commands
-- `clear` - Clear conversation history
-- `sources` - Show sources from last response
-- `settings` - Show current settings
-- `save` - Save conversation to file
-- `quit/exit/q` - Exit chat
-
-#### Parameters:
-
-- `--llm-model`: Ollama LLM model for generation
-- `--embedding-model`: Ollama model for embeddings
-- `--top-k`: Number of context chunks to retrieve (default: 5)
-- `--temperature`: LLM sampling temperature (0.0-1.0)
-- `--max-tokens`: Maximum tokens in response
-- `--stream`: Stream LLM responses
-- `--show-sources`: Display source citations
-- `--system-prompt`: Custom system prompt for LLM
+```bash
+cd web/frontend
+npm install
+npm run dev
+```
 
 ## Configuration
 
-### Ollama Configuration
+### Environment Variables
 
-Default Ollama URL: `http://localhost:11434`
-
-To use a remote Ollama instance:
+Set environment variables to customize behavior:
 
 ```bash
---ollama-url http://192.168.1.7:11434
+# Database settings
+export QDRANT_URL="http://localhost:6333"
+export QDRANT_TIMEOUT=30
+
+# Embedding settings
+export OLLAMA_URL="http://localhost:11434"
+export OLLAMA_MODEL="embeddinggemma:latest"
+export OLLAMA_TIMEOUT=120
+
+# Indexing settings
+export INDEXING_CHUNK_SIZE=150
+export INDEXING_CHUNK_OVERLAP=30
+
+# Search settings
+export SEARCH_DEFAULT_LIMIT=10
+export SEARCH_ENABLE_HYBRID=true
 ```
 
-### Qdrant Configuration
+### Configuration File
 
-Default Qdrant URL: `http://localhost:6333`
+Create a JSON configuration file:
 
-To use a remote Qdrant instance:
-
-```bash
---qdrant-url http://remote-server:6333
+```json
+{
+  "database": {
+    "url": "http://localhost:6333",
+    "timeout": 30
+  },
+  "embedding": {
+    "url": "http://localhost:11434",
+    "model": "embeddinggemma:latest",
+    "timeout": 120
+  },
+  "indexing": {
+    "chunk_size": 150,
+    "chunk_overlap": 30
+  }
+}
 ```
 
-### Available Models
+Use with: `./qras query "test" --config-file config.json`
 
-Check available models in Ollama:
+## Supported Models
 
-```bash
-curl http://localhost:11434/api/tags | python -m json.tool
-```
+### Embedding Models
 
-Common embedding models:
+- `embeddinggemma:latest` (768 dims) - Fast and efficient
+- `bge-m3:567m` (1024 dims) - Multilingual, high quality
+- `bge-large:latest` (1024 dims) - Large model for quality
+- `all-minilm-l6-v2` (384 dims) - Compact and fast
 
-- `embeddinggemma:latest` (768 dimensions)
-- `bge-m3:567m` (1024 dimensions)
-- `mxbai-embed-large` (1024 dimensions)
+### Chat Models
 
-Common LLM models:
-
-- `mistral`
-- `gemma`
-- `llama3`
-- `sahabatai1`
-- `sidrap-7b`
+- `llama3` - General purpose conversational AI
+- `codellama` - Code-focused responses
+- `mistral` - Efficient and capable
+- `gemma` - Google's efficient model
+- Any Ollama-compatible model
 
 ## Examples
 
-### Complete Workflow Example
+### Complete Workflow
 
-1. **Index documents:**
+1. **Index some documents:**
 
-```bash
-python index_qdrant.py \
-    --scan-dir docs_example \
-    --model bge-m3:567m \
-    --recreate \
-    --chunk-size 200 \
-    --max-chunks-per-article 15
-```
+   ```bash
+   ./qras index --input-path ./my-documents --collection knowledge
+   ```
 
-2. **Test search:**
+2. **Search the indexed content:**
 
-```bash
-python query_qdrant.py \
-    --query "REST API authentication" \
-    --hybrid \
-    --limit 5 \
-    --output-format compact
-```
+   ```bash
+   ./qras query "artificial intelligence" --collection knowledge --hybrid
+   ```
 
-3. **Start RAG chat:**
+3. **Chat with your documents:**
 
-```bash
-python chat_rag.py \
-    --llm-model llama2 \
-    --embedding-model bge-m3:567m \
-    --top-k 3 \
-    --temperature 0.7 \
-    --stream \
-    --show-sources
-```
+   ```bash
+   ./qras chat --interactive --collection knowledge
+   ```
 
-### Custom System Prompt
+4. **Use the web interface:**
+   ```bash
+   ./qras web
+   ```
+
+### Advanced Usage
 
 ```bash
-python chat_rag.py \
-    --llm-model llama2 \
-    --system-prompt "You are a technical documentation assistant. Always provide code examples when relevant."
+# Index with custom settings
+./qras index \
+  --input-path ./documents \
+  --collection docs \
+  --model bge-m3:567m \
+  --chunk-size 200 \
+  --chunk-overlap 40 \
+  --workers 8
+
+# Search with specific parameters
+./qras query \
+  "machine learning algorithms" \
+  --collection docs \
+  --hybrid \
+  --limit 15 \
+  --min-score 0.1 \
+  --output-format json
+
+# Chat with custom prompts
+./qras chat \
+  --interactive \
+  --collection docs \
+  --embedding-model bge-m3:567m \
+  --chat-model llama3 \
+  --system-prompt "You are a technical expert. Provide detailed explanations."
 ```
 
-## Troubleshooting
+### Migration from Old Scripts
+
+If you were using the old individual scripts, here's how to migrate:
+
+```bash
+# Old way
+python query_qdrant.py --query "test" --hybrid
+python index_qdrant.py --json-file data.json --recreate
+python chat_rag.py --llm-model llama3
+
+# New unified way
+./qras query "test" --hybrid
+./qras index --input-path data.json --recreate
+./qras chat --interactive --chat-model llama3
+```
+
+## Development
+
+### Project Architecture
+
+The system is built with a clean separation between:
+
+- **Shared Library (`lib/`)**: Common functionality used by both CLI and web
+- **CLI Tools (`cli/`)**: Command-line interfaces for different operations
+- **Web Interface (`web/`)**: FastAPI backend + Svelte frontend
+
+### Key Features
+
+- **Environment-based imports**: Uses `PYTHONPATH` instead of sys.path hacks
+- **Shared components**: DRY principle - write once, use everywhere
+- **Professional structure**: Follows Python packaging best practices
+- **Configurable**: Environment variables and config files
+- **Extensible**: Easy to add new models, search types, or CLI commands
+
+### Common Issues
+
+1. **Import errors**: Make sure you're using `./qras` (not individual Python scripts)
+2. **Permission denied**: Run `chmod +x ./qras` to make the script executable
+3. **Connection errors**: Verify Qdrant and Ollama are running
+4. **Model not found**: Pull the required model with `ollama pull <model-name>`
+5. **Empty results**: Check if documents are properly indexed
+
+### Debug Mode
+
+Run with verbose output:
+
+```bash
+LOG_LEVEL=DEBUG ./qras query "test"
+```
 
 ### Vector Dimension Mismatch
 
@@ -266,11 +415,11 @@ If you get a "Vector dimension error", ensure the embedding model used for query
 
 ```bash
 # Check collection info
-python query_qdrant.py --interactive
-> stats
+./qras query --interactive
+# Then type: stats
 
 # Re-index with correct model if needed
-python index_qdrant.py --recreate --model <correct-model>
+./qras index --input-path ./docs --recreate --model <correct-model>
 ```
 
 ### Connection Issues
@@ -295,23 +444,12 @@ docker ps | grep qdrant
 docker run -p 6333:6333 qdrant/qdrant
 ```
 
-### Memory Issues
-
-For large datasets, adjust batch sizes:
-
-```bash
-python index_qdrant.py \
-    --batch-size 50 \
-    --embedding-batch-size 10 \
-    --workers 2
-```
-
 ## Performance Tips
 
 1. **Use hybrid search** for better relevance:
 
    ```bash
-   --hybrid --fusion-method rrf
+   ./qras query "your query" --hybrid
    ```
 
 2. **Optimize chunk size** based on your content:
@@ -319,41 +457,15 @@ python index_qdrant.py \
    - Shorter chunks (100-150 words) for precise retrieval
    - Longer chunks (200-300 words) for more context
 
-3. **Adjust top-k** for RAG:
+3. **Adjust search parameters** for RAG:
 
-   - Lower k (3-5) for focused responses
-   - Higher k (7-10) for comprehensive answers
+   - Lower limit (3-5) for focused responses
+   - Higher limit (7-10) for comprehensive answers
 
 4. **Use streaming** for better UX:
    ```bash
-   --stream
+   ./qras chat --interactive  # Streaming enabled by default
    ```
-
-## Development
-
-### Adding New Features
-
-The codebase is modular and extensible:
-
-- `embed_one_ollama()`: Handles embedding generation
-- `search_qdrant_hybrid()`: Implements hybrid search
-- `chat_with_rag()`: Main RAG pipeline
-- `interactive_chat()`: Interactive chat interface
-
-### Testing
-
-Run basic tests:
-
-```bash
-# Test indexing
-python index_qdrant.py --scan-dir docs_example --max-docs 5 --recreate
-
-# Test search
-python query_qdrant.py --query "test query" --limit 3
-
-# Test chat
-echo "What is Frappe?" | python chat_rag.py --llm-model llama2
-```
 
 ## License
 
@@ -367,6 +479,9 @@ echo "What is Frappe?" | python chat_rag.py --llm-model llama2
 
 - [Qdrant](https://qdrant.tech/) - Vector database
 - [Ollama](https://ollama.ai/) - Local LLM runtime
+- [FastAPI](https://fastapi.tiangolo.com/) - Web framework
+- [Svelte](https://svelte.dev/) - Frontend framework
 
-[] Robin Syihab
+---
 
+**Author:** Robin Syihab

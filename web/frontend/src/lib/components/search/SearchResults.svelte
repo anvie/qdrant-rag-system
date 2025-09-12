@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, createEventDispatcher } from "svelte";
   import Icon from "@iconify/svelte";
+  
+  const dispatch = createEventDispatcher();
 
   // Components
   import Button from "../common/Button.svelte";
@@ -51,14 +53,17 @@
       selectedResults.add(resultId);
     }
     selectedResults = selectedResults; // Trigger reactivity
+    dispatch('selectionChange', { selectedIds: selectedResults });
   };
 
   const selectAll = () => {
     selectedResults = new Set($searchResults.map((r) => r.id));
+    dispatch('selectionChange', { selectedIds: selectedResults });
   };
 
   const clearSelection = () => {
     selectedResults = new Set();
+    dispatch('selectionChange', { selectedIds: selectedResults });
   };
 
   // Result actions

@@ -2,24 +2,32 @@
 Collections management endpoints
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from sqlalchemy.orm import Session
-from typing import List, Optional
-from pydantic import BaseModel, Field
-import sys
 import os
+import sys
 import traceback
 from datetime import datetime
+from typing import List, Optional
+from uuid import uuid4
 
-# Add parent directories to path to import existing modules
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../.."))
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
-from query_qdrant import get_collection_stats
-from qdrant_client import QdrantClient
+# Add the project root to Python path to access the shared lib
+project_root = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../../../../..")
+)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.collection import Collection as CollectionModel
-from app.services.embedding_models import get_embedding_registry
+from qdrant_client import QdrantClient
+
+# Use shared library instead of local modules
+from lib.embedding.models import get_model_registry
+from lib.qdrant.search import get_collection_stats
 
 router = APIRouter()
 
@@ -250,7 +258,7 @@ async def create_collection(
     """Create a new collection with embedding model support."""
     try:
         client = QdrantClient(url=settings.QDRANT_URL)
-        embedding_registry = get_embedding_registry()
+        embedding_registry = get_model_registry(settings.OLLAMA_URL)
 
         # Check if collection already exists in Qdrant
         try:
@@ -407,7 +415,7 @@ async def delete_collection(collection_name: str, db: Session = Depends(get_db))
 async def list_available_embedding_models():
     """List all available embedding models."""
     try:
-        registry = get_embedding_registry()
+        registry = get_model_registry(settings.OLLAMA_URL)
         models = registry.list_available_models()
 
         result = []
@@ -446,7 +454,7 @@ async def list_available_embedding_models():
 async def list_recommended_embedding_models():
     """List recommended embedding models for common use cases."""
     try:
-        registry = get_embedding_registry()
+        registry = get_model_registry(settings.OLLAMA_URL)
         models = registry.get_recommended_models()
 
         result = []
@@ -479,7 +487,7 @@ async def list_recommended_embedding_models():
 async def validate_embedding_model(model_name: str):
     """Validate an embedding model and return its specifications."""
     try:
-        registry = get_embedding_registry()
+        registry = get_model_registry(settings.OLLAMA_URL)
         validation_result = registry.validate_model(model_name)
 
         return {
@@ -495,4 +503,237 @@ async def validate_embedding_model(model_name: str):
         traceback.print_exception(type(e), e, e.__traceback__)
         raise HTTPException(
             status_code=500, detail=f"Failed to validate model: {str(e)}"
+        )
+
+
+# Collection Records Models
+class CollectionRecord(BaseModel):
+    """Collection record response model."""
+
+    id: str
+    title: str
+    content: str
+    metadata: Optional[dict] = None
+    created_at: Optional[str] = None
+
+
+class CollectionRecordCreate(BaseModel):
+    """Collection record creation model."""
+
+    title: str
+    content: str
+    metadata: Optional[dict] = None
+
+
+class CollectionRecordsResponse(BaseModel):
+    """Paginated collection records response."""
+
+    records: List[CollectionRecord]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class BulkRecordCreate(BaseModel):
+    """Bulk record creation model."""
+
+    records: List[CollectionRecordCreate]
+
+
+# Collection Records Endpoints
+@router.get("/{collection_name}/records", response_model=CollectionRecordsResponse)
+async def get_collection_records(
+    collection_name: str,
+    page: int = 1,
+    page_size: int = 20,
+    db: Session = Depends(get_db),
+):
+    """Get paginated records from a collection."""
+    try:
+        client = QdrantClient(url=settings.QDRANT_URL)
+
+        # Check if collection exists
+        try:
+            client.get_collection(collection_name)
+        except Exception:
+            raise HTTPException(
+                status_code=404, detail=f"Collection '{collection_name}' not found"
+            )
+
+        # Calculate offset
+        offset = (page - 1) * page_size
+
+        # Get records from Qdrant
+        search_result = client.scroll(
+            collection_name=collection_name,
+            limit=page_size,
+            offset=offset,
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        records = []
+        for point in search_result[0]:  # search_result is (points, next_page_offset)
+            payload = point.payload or {}
+            records.append(
+                CollectionRecord(
+                    id=str(point.id),
+                    title=payload.get("title", ""),
+                    content=payload.get("content", ""),
+                    metadata=payload.get("metadata", {}),
+                    created_at=payload.get("created_at"),
+                )
+            )
+
+        # Get total count
+        collection_info = client.get_collection(collection_name)
+        total_records = collection_info.points_count
+        total_pages = (total_records + page_size - 1) // page_size
+
+        client.close()
+
+        return CollectionRecordsResponse(
+            records=records,
+            total=total_records,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exception(type(e), e, e.__traceback__)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get collection records: {str(e)}"
+        )
+
+
+@router.post("/{collection_name}/records")
+async def add_records(
+    collection_name: str, records_data: BulkRecordCreate, db: Session = Depends(get_db)
+):
+    """Add records to a collection."""
+    try:
+        client = QdrantClient(url=settings.QDRANT_URL)
+        embedding_registry = get_model_registry(settings.OLLAMA_URL)
+
+        # Check if collection exists and get metadata
+        try:
+            client.get_collection(collection_name)
+        except Exception:
+            raise HTTPException(
+                status_code=404, detail=f"Collection '{collection_name}' not found"
+            )
+
+        # Get collection metadata from database
+        collection_meta = (
+            db.query(CollectionModel)
+            .filter(CollectionModel.name == collection_name)
+            .first()
+        )
+
+        if not collection_meta or not collection_meta.embedding_model:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Collection '{collection_name}' has no embedding model configured",
+            )
+
+        # Process records
+        points_to_upsert = []
+
+        for record in records_data.records:
+            # Generate embedding for content
+            embedding = embedding_registry.get_embedding(
+                collection_meta.embedding_model, record.content
+            )
+
+            if not embedding:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to generate embedding for record: {record.title}",
+                )
+
+            # Create point
+            point_id = str(uuid4())
+            payload = {
+                "title": record.title,
+                "content": record.content,
+                "metadata": record.metadata or {},
+                "created_at": datetime.utcnow().isoformat(),
+            }
+
+            from qdrant_client.models import PointStruct
+
+            points_to_upsert.append(
+                PointStruct(id=point_id, vector=embedding, payload=payload)
+            )
+
+        # Upsert points to Qdrant
+        client.upsert(collection_name=collection_name, points=points_to_upsert)
+
+        client.close()
+
+        return {
+            "message": f"Successfully added {len(records_data.records)} records to collection '{collection_name}'",
+            "records_count": len(records_data.records),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exception(type(e), e, e.__traceback__)
+        raise HTTPException(status_code=500, detail=f"Failed to add records: {str(e)}")
+
+
+@router.delete("/{collection_name}/records/{record_id}")
+async def delete_record(
+    collection_name: str, record_id: str, db: Session = Depends(get_db)
+):
+    """Delete a specific record from a collection."""
+    try:
+        client = QdrantClient(url=settings.QDRANT_URL)
+
+        # Check if collection exists
+        try:
+            client.get_collection(collection_name)
+        except Exception:
+            raise HTTPException(
+                status_code=404, detail=f"Collection '{collection_name}' not found"
+            )
+
+        # Check if record exists
+        try:
+            record = client.retrieve(
+                collection_name=collection_name, ids=[record_id], with_payload=True
+            )
+            if not record:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Record '{record_id}' not found in collection '{collection_name}'",
+                )
+        except Exception as e:
+            if "404" in str(e):
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Record '{record_id}' not found in collection '{collection_name}'",
+                )
+            raise
+
+        # Delete the record
+        client.delete(collection_name=collection_name, points_selector=[record_id])
+
+        client.close()
+
+        return {
+            "message": f"Record '{record_id}' deleted successfully from collection '{collection_name}'"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exception(type(e), e, e.__traceback__)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete record: {str(e)}"
         )

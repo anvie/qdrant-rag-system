@@ -15,7 +15,10 @@ from datetime import datetime
 import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add the project root to Python path to access the shared lib
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from api.routes import router
 from core.config import settings

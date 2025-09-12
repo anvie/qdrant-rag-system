@@ -14,8 +14,12 @@ from app.core.config import settings
 from app.core.database import get_db_session
 from app.models.collection import Collection as CollectionModel
 
-# Add parent directories to path to import existing modules
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../../../.."))
+# Add the project root to Python path to access the shared lib
+project_root = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../../../../..")
+)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from qdrant_client import QdrantClient
 import requests
@@ -23,20 +27,17 @@ import requests
 # Configure logger
 logger = logging.getLogger(__name__)
 
-# Import search functions from parent directory
-try:
-    from query_qdrant import (
-        search_qdrant_simple,
-        search_qdrant_hybrid,
-        embed_one_ollama,
-        get_collection_stats,
-        get_article_by_id,
-        group_results_by_article,
-        create_session,
-    )
-    from embedding_formatter import format_query
-except ImportError as e:
-    print(f"Warning: Could not import search functions: {e}")
+# Import search functions from shared library
+from lib.qdrant.search import (
+    search_qdrant_simple,
+    search_qdrant_hybrid,
+    get_collection_stats,
+    get_article_by_id,
+    group_results_by_article,
+    QdrantSearchClient,
+)
+from lib.embedding.client import embed_one_ollama, create_session
+from lib.embedding.formatter import format_query
 
 
 class SearchService:

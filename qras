@@ -1,0 +1,142 @@
+#!/bin/bash
+# Unified RAG CLI tool for the Qdrant RAG system
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+
+# Set PYTHONPATH to include the project root
+export PYTHONPATH="${SCRIPT_DIR}:${PYTHONPATH}"
+
+# Function to start web services
+start_web() {
+  echo "Starting Qdrant RAG Web Services..."
+  echo "===================================="
+  echo
+
+  # Check if required directories exist
+  if [ ! -d "${SCRIPT_DIR}/web/backend/app" ]; then
+    echo "Error: Backend directory not found at ${SCRIPT_DIR}/web/backend/app"
+    exit 1
+  fi
+
+  if [ ! -d "${SCRIPT_DIR}/web/frontend" ]; then
+    echo "Error: Frontend directory not found at ${SCRIPT_DIR}/web/frontend"
+    exit 1
+  fi
+
+  # Check if npm is available
+  if ! command -v npm &>/dev/null; then
+    echo "Error: npm is not installed or not in PATH"
+    exit 1
+  fi
+
+  # Variables to store process IDs
+  backend_pid=""
+  frontend_pid=""
+
+  # Function to cleanup processes on exit
+  cleanup() {
+    echo
+    echo "Shutting down web services..."
+    if [ -n "$backend_pid" ]; then
+      echo "Stopping backend server (PID: $backend_pid)"
+      kill "$backend_pid" 2>/dev/null
+    fi
+    if [ -n "$frontend_pid" ]; then
+      echo "Stopping frontend server (PID: $frontend_pid)"
+      kill "$frontend_pid" 2>/dev/null
+    fi
+    echo "Web services stopped."
+    exit 0
+  }
+
+  # Set up signal traps for clean shutdown
+  trap cleanup SIGINT SIGTERM
+
+  # Start backend server
+  echo "Starting backend server on http://localhost:8000..."
+  cd "${SCRIPT_DIR}/web/backend/app" && PYTHONPATH="${SCRIPT_DIR}:${SCRIPT_DIR}/web/backend:${PYTHONPATH}" "${SCRIPT_DIR}/env/bin/python" -m uvicorn main:app --host 0.0.0.0 --port 8000 &
+  backend_pid=$!
+
+  # Give backend a moment to start
+  sleep 2
+
+  # Start frontend server
+  echo "Starting frontend server on http://localhost:5173..."
+  cd "${SCRIPT_DIR}/web/frontend" && npm run dev &
+  frontend_pid=$!
+
+  echo
+  echo "Web services are starting up..."
+  echo "Backend API: http://localhost:8000"
+  echo "Frontend UI: http://localhost:5173"
+  echo
+  echo "Press Ctrl+C to stop all services"
+  echo
+
+  # Wait for processes to finish (keeps script running)
+  wait
+}
+
+# Function to show help
+show_help() {
+  echo "Qdrant RAG System CLI"
+  echo "===================="
+  echo
+  echo "Usage: $0 <command> [options]"
+  echo
+  echo "Commands:"
+  echo "  query    - Search documents with semantic/hybrid search"
+  echo "  index    - Index documents into vector database"
+  echo "  chat     - Interactive RAG chat with LLM"
+  echo "  web      - Start web backend and frontend servers"
+  echo "  help     - Show this help message"
+  echo
+  echo "Examples:"
+  echo "  $0 query \"machine learning algorithms\""
+  echo "  $0 query --help"
+  echo "  $0 index --input-path ./documents --collection docs"
+  echo "  $0 chat --interactive"
+  echo "  $0 web"
+  echo "  $0 help"
+  echo
+  echo "For command-specific help, use:"
+  echo "  $0 <command> --help"
+}
+
+# Check if at least one argument is provided
+if [ $# -eq 0 ]; then
+  show_help
+  exit 1
+fi
+
+# Get the command
+COMMAND="$1"
+shift # Remove the first argument (command) so $@ contains only the remaining args
+
+# Route to the appropriate CLI script
+case "$COMMAND" in
+query)
+  exec python "${SCRIPT_DIR}/cli/query.py" "$@"
+  ;;
+index)
+  exec python "${SCRIPT_DIR}/cli/index.py" "$@"
+  ;;
+chat)
+  exec python "${SCRIPT_DIR}/cli/chat.py" "$@"
+  ;;
+web)
+  start_web
+  ;;
+help | -h | --help)
+  show_help
+  exit 0
+  ;;
+*)
+  echo "Error: Unknown command '$COMMAND'"
+  echo
+  show_help
+  exit 1
+  ;;
+esac
+

@@ -17,6 +17,9 @@
 
   // Chat components
   import ChatInterface from "./lib/components/chat/ChatInterface.svelte";
+  
+  // Collection components
+  import CollectionDetail from "./lib/components/collections/CollectionDetail.svelte";
 
   // Common components
   import Card from "./lib/components/common/Card.svelte";
@@ -33,9 +36,16 @@
   import { notificationActions } from "./lib/stores/notifications";
 
   // URL routing helpers (defined first)
-  const getPageFromHash = (): string => {
-    if (typeof window === "undefined") return "dashboard";
+  const getPageFromHash = (): { page: string; params?: any } => {
+    if (typeof window === "undefined") return { page: "dashboard" };
     const hash = window.location.hash.slice(1); // Remove #
+    
+    // Check for collection detail page
+    if (hash.startsWith("collection/")) {
+      const collectionName = hash.slice(11); // Remove "collection/"
+      return { page: "collection-detail", params: { collectionName } };
+    }
+    
     const validPages = [
       "dashboard",
       "collections",
@@ -43,19 +53,23 @@
       "chat",
       "settings",
     ];
-    return validPages.includes(hash) ? hash : "dashboard";
+    return { page: validPages.includes(hash) ? hash : "dashboard" };
   };
 
   // App state - initialize currentPage from URL immediately
-  let currentPage: string = getPageFromHash();
+  const initialRoute = getPageFromHash();
+  let currentPage: string = initialRoute.page;
+  let currentParams: any = initialRoute.params || {};
   let sidebarCollapsed: boolean = false;
   let mobileMenuOpen: boolean = false;
 
-  const updateHash = (page: string) => {
+  const updateHash = (page: string, params?: any) => {
     if (typeof window === "undefined") return;
     if (page === "dashboard") {
       // Remove hash for dashboard (default page)
       window.location.hash = "";
+    } else if (page === "collection-detail" && params?.collectionName) {
+      window.location.hash = `collection/${params.collectionName}`;
     } else {
       window.location.hash = page;
     }
@@ -75,19 +89,21 @@
   }
 
   // Page navigation handler
-  const handleNavigation = (event: CustomEvent<{ page: string }>) => {
-    const page = event.detail.page;
+  const handleNavigation = (event: CustomEvent<{ page: string; params?: any }>) => {
+    const { page, params } = event.detail;
     currentPage = page;
-    updateHash(page);
+    currentParams = params || {};
+    updateHash(page, params);
     if (isMobile) {
       mobileMenuOpen = false;
     }
   };
 
   // Direct navigation helper
-  const navigateToPage = (page: string) => {
+  const navigateToPage = (page: string, params?: any) => {
     currentPage = page;
-    updateHash(page);
+    currentParams = params || {};
+    updateHash(page, params);
     if (isMobile) {
       mobileMenuOpen = false;
     }
@@ -95,9 +111,10 @@
 
   // Handle hash change events (back/forward navigation)
   const handleHashChange = () => {
-    const newPage = getPageFromHash();
-    if (newPage !== currentPage) {
-      currentPage = newPage;
+    const route = getPageFromHash();
+    if (route.page !== currentPage || JSON.stringify(route.params) !== JSON.stringify(currentParams)) {
+      currentPage = route.page;
+      currentParams = route.params || {};
     }
   };
 
@@ -121,10 +138,16 @@
   const pageTitles: Record<string, string> = {
     dashboard: "Dashboard",
     collections: "Collections",
+    "collection-detail": "Collection Details",
     search: "Search",
     chat: "Chat",
     settings: "Settings",
   };
+  
+  // Get current page title
+  $: pageTitle = currentPage === "collection-detail" && currentParams.collectionName
+    ? `Collection: ${currentParams.collectionName}`
+    : pageTitles[currentPage] || "Dashboard";
 
   // Initialize app
   onMount(async () => {
@@ -185,13 +208,15 @@
 
           <div>
             <h1 class="text-xl font-semibold text-gray-900">
-              {pageTitles[currentPage] || "Dashboard"}
+              {pageTitle}
             </h1>
             <p class="text-sm text-gray-600 mt-0.5">
               {#if currentPage === "dashboard"}
                 System overview and real-time monitoring
               {:else if currentPage === "collections"}
                 Manage your vector collections
+              {:else if currentPage === "collection-detail"}
+                View and manage collection records
               {:else if currentPage === "search"}
                 Search through your vectors
               {:else if currentPage === "chat"}
@@ -316,7 +341,10 @@
         </div>
       {:else if currentPage === "collections"}
         <!-- Collections Page -->
-        <CollectionsList />
+        <CollectionsList on:viewCollection={(e) => navigateToPage('collection-detail', { collectionName: e.detail.collectionName })} />
+      {:else if currentPage === "collection-detail"}
+        <!-- Collection Detail Page -->
+        <CollectionDetail collectionName={currentParams.collectionName} />
       {:else if currentPage === "search"}
         <!-- Search Page -->
         <div class="space-y-6">

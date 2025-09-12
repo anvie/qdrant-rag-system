@@ -3,7 +3,7 @@
  */
 
 import { writable, derived } from "svelte/store";
-import type { Collection, CollectionStats } from "../services/api";
+import type { Collection, CollectionStats, CollectionRecord, CollectionRecordsResponse } from "../services/api";
 import { api } from "../services/api";
 import { websocketService } from "../services/websocket";
 
@@ -12,6 +12,7 @@ export interface CollectionState {
   collections: Collection[];
   selectedCollection: Collection | null;
   collectionStats: Map<string, CollectionStats>;
+  collectionRecords: Map<string, CollectionRecordsResponse>;
   loading: boolean;
   error: string | null;
   lastUpdated: Date | null;
@@ -33,6 +34,7 @@ const initialCollectionState: CollectionState = {
   collections: [],
   selectedCollection: null,
   collectionStats: new Map(),
+  collectionRecords: new Map(),
   loading: false,
   error: null,
   lastUpdated: null,
@@ -455,6 +457,186 @@ export const collectionsActions = {
     } catch (error) {
       console.error(`Failed to validate model ${modelName}:`, error);
       throw error;
+    }
+  },
+
+  /**
+   * Get collection records
+   */
+  async getCollectionRecords(
+    collectionName: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<CollectionRecordsResponse | null> {
+    try {
+      const response = await api.getCollectionRecords(collectionName, page, pageSize);
+      
+      collectionsStore.update((state) => {
+        const newRecords = new Map(state.collectionRecords);
+        newRecords.set(`${collectionName}_${page}_${pageSize}`, response);
+        return {
+          ...state,
+          collectionRecords: newRecords,
+        };
+      });
+      
+      return response;
+    } catch (error) {
+      console.error(`Failed to get records for ${collectionName}:`, error);
+      collectionsStore.update((state) => ({
+        ...state,
+        error:
+          error instanceof Error
+            ? error.message
+            : `Failed to get records for ${collectionName}`,
+      }));
+      return null;
+    }
+  },
+
+  /**
+   * Add records to collection
+   */
+  async addRecords(
+    collectionName: string,
+    records: Array<{ title: string; content: string; metadata?: any }>
+  ): Promise<boolean> {
+    collectionsStore.update((state) => ({
+      ...state,
+      operationInProgress: "create",
+      error: null,
+    }));
+
+    try {
+      await api.addRecords(collectionName, records);
+      
+      // Clear cached records to force refresh
+      collectionsStore.update((state) => {
+        const newRecords = new Map(state.collectionRecords);
+        // Remove all cached pages for this collection
+        for (const key of newRecords.keys()) {
+          if (key.startsWith(`${collectionName}_`)) {
+            newRecords.delete(key);
+          }
+        }
+        return {
+          ...state,
+          collectionRecords: newRecords,
+        };
+      });
+      
+      // Refresh collection stats
+      await this.loadCollectionStats(collectionName);
+      
+      return true;
+    } catch (error) {
+      console.error(`Failed to add records to ${collectionName}:`, error);
+      collectionsStore.update((state) => ({
+        ...state,
+        error:
+          error instanceof Error
+            ? error.message
+            : `Failed to add records to ${collectionName}`,
+      }));
+      return false;
+    } finally {
+      collectionsStore.update((state) => ({
+        ...state,
+        operationInProgress: null,
+      }));
+    }
+  },
+
+  /**
+   * Delete a single record
+   */
+  async deleteRecord(
+    collectionName: string,
+    recordId: number
+  ): Promise<boolean> {
+    try {
+      await api.deleteRecord(collectionName, recordId);
+      
+      // Clear cached records
+      collectionsStore.update((state) => {
+        const newRecords = new Map(state.collectionRecords);
+        for (const key of newRecords.keys()) {
+          if (key.startsWith(`${collectionName}_`)) {
+            newRecords.delete(key);
+          }
+        }
+        return {
+          ...state,
+          collectionRecords: newRecords,
+        };
+      });
+      
+      // Refresh collection stats
+      await this.loadCollectionStats(collectionName);
+      
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete record ${recordId}:`, error);
+      collectionsStore.update((state) => ({
+        ...state,
+        error:
+          error instanceof Error
+            ? error.message
+            : `Failed to delete record`,
+      }));
+      return false;
+    }
+  },
+
+  /**
+   * Delete multiple records
+   */
+  async deleteRecords(
+    collectionName: string,
+    recordIds: number[]
+  ): Promise<boolean> {
+    collectionsStore.update((state) => ({
+      ...state,
+      operationInProgress: "delete",
+      error: null,
+    }));
+
+    try {
+      await api.deleteRecords(collectionName, recordIds);
+      
+      // Clear cached records
+      collectionsStore.update((state) => {
+        const newRecords = new Map(state.collectionRecords);
+        for (const key of newRecords.keys()) {
+          if (key.startsWith(`${collectionName}_`)) {
+            newRecords.delete(key);
+          }
+        }
+        return {
+          ...state,
+          collectionRecords: newRecords,
+        };
+      });
+      
+      // Refresh collection stats
+      await this.loadCollectionStats(collectionName);
+      
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete ${recordIds.length} records:`, error);
+      collectionsStore.update((state) => ({
+        ...state,
+        error:
+          error instanceof Error
+            ? error.message
+            : `Failed to delete records`,
+      }));
+      return false;
+    } finally {
+      collectionsStore.update((state) => ({
+        ...state,
+        operationInProgress: null,
+      }));
     }
   },
 };

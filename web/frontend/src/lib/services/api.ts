@@ -17,6 +17,32 @@ export interface Collection {
   description?: string;
 }
 
+export interface CollectionRecord {
+  id: string;
+  title: string;
+  content: string;
+  metadata?: Record<string, any>;
+  created_at?: string;
+}
+
+export interface CollectionRecordsResponse {
+  records: CollectionRecord[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface CollectionRecordCreate {
+  title: string;
+  content: string;
+  metadata?: Record<string, any>;
+}
+
+export interface BulkRecordCreate {
+  records: CollectionRecordCreate[];
+}
+
 export interface CollectionStats {
   name: string;
   points_count: number;
@@ -240,6 +266,44 @@ class ApiService {
     return response.data;
   }
 
+  async getCollectionRecords(
+    collectionName: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<CollectionRecordsResponse> {
+    const response = await this.client.get<CollectionRecordsResponse>(
+      `/collections/${collectionName}/records`,
+      {
+        params: {
+          page,
+          page_size: pageSize,
+        },
+      }
+    );
+    return response.data;
+  }
+
+  async addRecords(
+    collectionName: string,
+    records: CollectionRecordCreate[]
+  ): Promise<{ message: string; records_count: number }> {
+    const response = await this.client.post<{ message: string; records_count: number }>(
+      `/collections/${collectionName}/records`,
+      { records }
+    );
+    return response.data;
+  }
+
+  async deleteRecord(
+    collectionName: string,
+    recordId: string
+  ): Promise<{ message: string }> {
+    const response = await this.client.delete<{ message: string }>(
+      `/collections/${collectionName}/records/${recordId}`
+    );
+    return response.data;
+  }
+
   async createCollection(data: {
     name: string;
     vector_size?: number;
@@ -253,6 +317,30 @@ class ApiService {
 
   async deleteCollection(collectionName: string): Promise<{ message: string }> {
     const response = await this.client.delete(`/collections/${collectionName}`);
+    return response.data;
+  }
+
+
+  async uploadFile(
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<{ file_path: string; file_name: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await this.client.post('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const progress = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          onProgress(progress);
+        }
+      },
+    });
     return response.data;
   }
 

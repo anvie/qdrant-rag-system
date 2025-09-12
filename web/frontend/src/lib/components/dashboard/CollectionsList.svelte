@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import Card from '../common/Card.svelte';
   import Button from '../common/Button.svelte';
   import LoadingSpinner from '../common/LoadingSpinner.svelte';
@@ -17,6 +17,8 @@
     collectionStatsMap
   } from '../../stores/collections';
   import { notificationActions } from '../../stores/notifications';
+  
+  const dispatch = createEventDispatcher();
 
   // Component state
   export let viewMode: 'grid' | 'list' = 'grid';
@@ -126,6 +128,7 @@
     collectionsActions.selectCollection(
       $collections.find(c => c.name === collectionName) || null
     );
+    dispatch('viewCollection', { collectionName });
   };
 
   // Handle create collection

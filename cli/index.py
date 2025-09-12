@@ -1,0 +1,435 @@
+#!/usr/bin/env python3
+"""
+Indexing CLI for the Qdrant RAG system.
+
+This script provides command-line access to document indexing functionality
+using the shared library components.
+"""
+
+import argparse
+import sys
+import time
+import logging
+from pathlib import Path
+from typing import Optional, List, Dict, Any
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance
+
+# Import from shared library (use PYTHONPATH environment variable)
+from lib.embedding.client import OllamaEmbeddingClient
+from lib.embedding.models import get_model_registry
+from lib.qdrant.indexing import (
+    QdrantIndexer,
+    read_markdown_files,
+    read_json_files,
+)
+from lib.qdrant.search import get_collection_stats
+from lib.utils.config import get_config
+
+logger = logging.getLogger(__name__)
+
+
+def progress_callback(current: int, total: int) -> None:
+    """Progress callback for indexing operations."""
+    percentage = (current / total) * 100
+    print(f"📊 Progress: {current}/{total} chunks indexed ({percentage:.1f}%)")
+
+
+def create_collection_if_needed(
+    qdrant_client: QdrantClient,
+    collection_name: str,
+    vector_size: int,
+    distance_metric: str = "cosine",
+    recreate: bool = False,
+) -> bool:
+    """Create collection if it doesn't exist."""
+    try:
+        # Check if collection exists
+        collections = qdrant_client.get_collections()
+        existing_names = [col.name for col in collections.collections]
+
+        if collection_name in existing_names:
+            if recreate:
+                print(f"🗑️  Deleting existing collection '{collection_name}'...")
+                qdrant_client.delete_collection(collection_name)
+                print(f"✅ Collection '{collection_name}' deleted")
+            else:
+                print(f"📦 Collection '{collection_name}' already exists")
+                return True
+
+        # Map string distance to Qdrant Distance enum
+        distance_map = {
+            "cosine": Distance.COSINE,
+            "dot": Distance.DOT,
+            "euclidean": Distance.EUCLID,
+        }
+        distance = distance_map.get(distance_metric.lower(), Distance.COSINE)
+
+        print(
+            f"🏗️  Creating collection '{collection_name}' with {vector_size} dimensions..."
+        )
+
+        indexer = QdrantIndexer(
+            qdrant_client, None, ""
+        )  # embedding client not needed for collection creation
+        success = indexer.create_collection(collection_name, vector_size, distance)
+
+        if success:
+            print(f"✅ Collection '{collection_name}' created successfully")
+            return True
+        else:
+            print(f"❌ Failed to create collection '{collection_name}'")
+            return False
+
+    except Exception as e:
+        print(f"❌ Error creating collection: {e}")
+        return False
+
+
+def load_documents(
+    input_path: str, max_docs: Optional[int] = None, file_type: str = "auto"
+) -> List[Dict[str, Any]]:
+    """Load documents from input path."""
+    input_dir = Path(input_path)
+
+    if not input_dir.exists():
+        raise FileNotFoundError(f"Input path not found: {input_path}")
+
+    if input_dir.is_file():
+        # Single file - determine type from extension
+        if input_path.endswith(".json"):
+            file_type = "json"
+        elif input_path.endswith(".md"):
+            file_type = "markdown"
+        else:
+            raise ValueError(f"Unsupported file type: {input_path}")
+
+        # Create temporary directory structure for single file
+        input_dir = input_dir.parent
+
+    # Auto-detect file type if not specified
+    if file_type == "auto":
+        json_files = list(input_dir.rglob("*.json"))
+        md_files = list(input_dir.rglob("*.md"))
+
+        if json_files and not md_files:
+            file_type = "json"
+        elif md_files and not json_files:
+            file_type = "markdown"
+        elif json_files and md_files:
+            print(
+                f"📁 Found both JSON ({len(json_files)}) and Markdown ({len(md_files)}) files"
+            )
+            file_type = "json"  # Prefer JSON if both exist
+        else:
+            raise ValueError(f"No supported files found in: {input_path}")
+
+    print(f"📂 Loading {file_type} documents from: {input_path}")
+
+    if file_type == "json":
+        return read_json_files(str(input_dir), max_docs)
+    elif file_type == "markdown":
+        return read_markdown_files(str(input_dir), max_docs)
+    else:
+        raise ValueError(f"Unsupported file type: {file_type}")
+
+
+def index_documents(args) -> None:
+    """Main indexing function."""
+    print("🚀 Starting document indexing...")
+    start_time = time.time()
+
+    # Load configuration
+    config = get_config(args.config_file) if args.config_file else get_config()
+
+    # Initialize clients
+    print("🔗 Connecting to services...")
+    qdrant_client = QdrantClient(url=args.qdrant_url, timeout=60.0)
+    embedding_client = OllamaEmbeddingClient(
+        ollama_url=args.ollama_url,
+        timeout=args.connection_timeout,
+    )
+
+    try:
+        # Get vector size for the model
+        print(f"🤖 Getting model information for: {args.model}")
+        registry = get_model_registry(args.ollama_url)
+        vector_size = registry.get_or_detect_vector_size(args.model)
+
+        if not vector_size:
+            print(f"❌ Could not determine vector size for model: {args.model}")
+            print("Available models in registry:")
+            for model in registry.list_available_models()[:5]:
+                print(
+                    f"  • {model['name']} ({model.get('vector_size', 'unknown')} dims)"
+                )
+            sys.exit(1)
+
+        print(f"✅ Model '{args.model}' uses {vector_size} dimensional vectors")
+
+        # Create collection
+        if not create_collection_if_needed(
+            qdrant_client,
+            args.collection,
+            vector_size,
+            args.distance_metric,
+            args.recreate,
+        ):
+            sys.exit(1)
+
+        # Load documents
+        print(f"📚 Loading documents from: {args.input_path}")
+        documents = load_documents(args.input_path, args.max_docs, args.file_type)
+
+        if not documents:
+            print("❌ No documents found to index")
+            sys.exit(1)
+
+        print(f"📖 Loaded {len(documents)} documents")
+
+        # Show collection stats before indexing
+        if not args.quiet:
+            stats = get_collection_stats(qdrant_client, args.collection)
+            print("📊 Collection stats before indexing:")
+            for key, value in stats.items():
+                print(f"   {key}: {value}")
+
+        # Initialize indexer
+        indexer = QdrantIndexer(
+            qdrant_client=qdrant_client,
+            embedding_client=embedding_client,
+            embedding_model=args.model,
+        )
+
+        # Index documents
+        print(f"⚙️  Starting indexing with {args.workers} workers...")
+        success = indexer.index_documents(
+            collection_name=args.collection,
+            documents=documents,
+            chunk_size=args.chunk_size,
+            chunk_overlap=args.chunk_overlap,
+            max_chunks_per_article=args.max_chunks_per_article,
+            batch_size=args.batch_size,
+            max_workers=args.workers,
+            progress_callback=None if args.quiet else progress_callback,
+        )
+
+        if not success:
+            print("❌ Indexing failed")
+            sys.exit(1)
+
+        # Show final stats
+        print("\n📊 Final collection statistics:")
+        stats = get_collection_stats(qdrant_client, args.collection)
+        for key, value in stats.items():
+            print(f"   {key}: {value}")
+
+        # Calculate and show timing
+        elapsed_time = time.time() - start_time
+        minutes = int(elapsed_time // 60)
+        seconds = elapsed_time % 60
+
+        print("\n✅ Indexing completed successfully!")
+        print(f"⏱️  Total time: {minutes}m {seconds:.1f}s")
+        print(f"📈 Indexed {len(documents)} documents")
+        print(f"🎯 Collection: {args.collection}")
+        print(f"🤖 Model: {args.model}")
+
+    except KeyboardInterrupt:
+        print("\n⚠️  Indexing interrupted by user")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Indexing error: {e}")
+        print(f"❌ Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        qdrant_client.close()
+
+
+def show_collection_info(args) -> None:
+    """Show information about collections."""
+    try:
+        qdrant_client = QdrantClient(url=args.qdrant_url, timeout=30.0)
+
+        if args.collection:
+            # Show specific collection stats
+            print(f"📊 Statistics for collection '{args.collection}':")
+            stats = get_collection_stats(qdrant_client, args.collection)
+            for key, value in stats.items():
+                print(f"   {key}: {value}")
+        else:
+            # List all collections
+            collections = qdrant_client.get_collections()
+            print(f"📦 Found {len(collections.collections)} collections:")
+
+            for collection in collections.collections:
+                print(f"\n  📁 {collection.name}")
+                stats = get_collection_stats(qdrant_client, collection.name)
+                for key, value in stats.items():
+                    print(f"     {key}: {value}")
+
+        qdrant_client.close()
+
+    except Exception as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def main():
+    """Main CLI entry point."""
+    # Load configuration
+    config = get_config()
+
+    parser = argparse.ArgumentParser(
+        description="Index documents into Qdrant vector database",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s --input-path ./documents --collection docs
+  %(prog)s --input-path ./articles.json --collection articles --recreate
+  %(prog)s --input-path ./data --model bge-m3:567m --chunk-size 200
+  %(prog)s --info  # Show all collections
+  %(prog)s --info --collection docs  # Show specific collection stats
+
+Supported file types: JSON, Markdown (.md)
+File type is auto-detected based on file extensions.
+    """,
+    )
+
+    # Main operation mode
+    operation = parser.add_mutually_exclusive_group()
+    operation.add_argument(
+        "--input-path", "-i", help="Path to documents directory or file to index"
+    )
+    operation.add_argument(
+        "--info", action="store_true", help="Show collection information and statistics"
+    )
+
+    # Connection settings
+    parser.add_argument(
+        "--qdrant-url",
+        default=config.database.url,
+        help=f"Qdrant server URL (default: {config.database.url})",
+    )
+    parser.add_argument(
+        "--ollama-url",
+        default=config.embedding.url,
+        help=f"Ollama API URL (default: {config.embedding.url})",
+    )
+    parser.add_argument(
+        "--collection", "-c", default="docs", help="Collection name (default: docs)"
+    )
+
+    # Model settings
+    parser.add_argument(
+        "--model",
+        "-m",
+        default=config.embedding.model,
+        help=f"Embedding model to use (default: {config.embedding.model})",
+    )
+    parser.add_argument(
+        "--distance-metric",
+        choices=["cosine", "dot", "euclidean"],
+        default="cosine",
+        help="Distance metric for similarity (default: cosine)",
+    )
+
+    # Indexing parameters
+    parser.add_argument(
+        "--recreate",
+        action="store_true",
+        help="Recreate collection from scratch (deletes existing data)",
+    )
+    parser.add_argument(
+        "--max-docs",
+        type=int,
+        help="Maximum number of documents to index (useful for testing)",
+    )
+    parser.add_argument(
+        "--file-type",
+        choices=["auto", "json", "markdown"],
+        default="auto",
+        help="Input file type (default: auto-detect)",
+    )
+
+    # Chunking parameters
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=config.indexing.chunk_size,
+        help=f"Number of words per chunk (default: {config.indexing.chunk_size})",
+    )
+    parser.add_argument(
+        "--chunk-overlap",
+        type=int,
+        default=config.indexing.chunk_overlap,
+        help=f"Number of overlapping words between chunks (default: {config.indexing.chunk_overlap})",
+    )
+    parser.add_argument(
+        "--max-chunks-per-article",
+        type=int,
+        default=config.indexing.max_chunks_per_article,
+        help=f"Maximum number of chunks per article (default: {config.indexing.max_chunks_per_article})",
+    )
+
+    # Performance parameters
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=config.embedding.batch_size,
+        help=f"Number of chunks to process in each batch (default: {config.embedding.batch_size})",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=config.embedding.max_workers,
+        help=f"Number of concurrent embedding workers (default: {config.embedding.max_workers})",
+    )
+    parser.add_argument(
+        "--connection-timeout",
+        type=int,
+        default=config.embedding.timeout,
+        help=f"Connection timeout in seconds (default: {config.embedding.timeout})",
+    )
+
+    # Output options
+    parser.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="Reduce verbose output during processing",
+    )
+    parser.add_argument("--config-file", help="Path to configuration file")
+
+    args = parser.parse_args()
+
+    # Setup logging
+    log_level = logging.WARNING if args.quiet else logging.INFO
+    logging.basicConfig(level=log_level, format="%(levelname)s: %(message)s")
+
+    # Validate arguments
+    if not args.input_path and not args.info:
+        parser.error(
+            "Must provide --input-path to index documents or --info to show collection information"
+        )
+
+    if args.input_path and not Path(args.input_path).exists():
+        parser.error(f"Input path does not exist: {args.input_path}")
+
+    try:
+        if args.info:
+            show_collection_info(args)
+        else:
+            index_documents(args)
+
+    except KeyboardInterrupt:
+        print("\n👋 Operation cancelled by user")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
