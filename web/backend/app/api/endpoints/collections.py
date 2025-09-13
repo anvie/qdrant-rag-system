@@ -2,6 +2,14 @@
 Collections management endpoints
 """
 
+from app.core.config import settings
+from app.core.database import get_db
+from app.models.collection import Collection as CollectionModel
+from lib.embedding.client import OllamaEmbeddingClient
+from qdrant_client import QdrantClient
+from lib.embedding.models import get_model_registry
+from lib.qdrant.search import get_collection_stats
+
 import os
 import sys
 import traceback
@@ -19,15 +27,6 @@ project_root = os.path.abspath(
 )
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-
-from app.core.config import settings
-from app.core.database import get_db
-from app.models.collection import Collection as CollectionModel
-from qdrant_client import QdrantClient
-
-# Use shared library instead of local modules
-from lib.embedding.models import get_model_registry
-from lib.qdrant.search import get_collection_stats
 
 router = APIRouter()
 
@@ -617,6 +616,9 @@ async def add_records(
     """Add records to a collection."""
     try:
         client = QdrantClient(url=settings.QDRANT_URL)
+        embedding_client = OllamaEmbeddingClient(
+            ollama_url=settings.OLLAMA_URL, timeout=120
+        )
         embedding_registry = get_model_registry(settings.OLLAMA_URL)
 
         # Check if collection exists and get metadata
@@ -645,9 +647,8 @@ async def add_records(
 
         for record in records_data.records:
             # Generate embedding for content
-            embedding = embedding_registry.get_embedding(
-                collection_meta.embedding_model, record.content
-            )
+            embedding = embedding_client.embed_text(record.content,
+                collection_meta.embedding_model)
 
             if not embedding:
                 raise HTTPException(
