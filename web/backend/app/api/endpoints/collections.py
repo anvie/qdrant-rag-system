@@ -647,8 +647,9 @@ async def add_records(
 
         for record in records_data.records:
             # Generate embedding for content
-            embedding = embedding_client.embed_text(record.content,
-                collection_meta.embedding_model)
+            embedding = embedding_client.embed_text(
+                record.content, collection_meta.embedding_model
+            )
 
             if not embedding:
                 raise HTTPException(
