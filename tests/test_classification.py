@@ -6,6 +6,7 @@ This script demonstrates text classification using embedding similarity
 for 4 categories: sport, islamic literature, finance, and programming.
 """
 
+import json
 import numpy as np
 from typing import List, Dict, Tuple
 import sys
@@ -13,10 +14,10 @@ import os
 import argparse
 
 # Add the project root to Python path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SCRIPT_DIR=os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(SCRIPT_DIR))
 
 from lib.embedding.client import OllamaEmbeddingClient
-
 
 def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     """Calculate cosine similarity between two vectors."""
@@ -33,47 +34,20 @@ def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     return dot_product / (norm1 * norm2)
 
 
-def create_test_data() -> Dict[str, List[str]]:
-    """Create dummy test data for each category."""
-    return {
+def get_test_data() -> Dict[str, List[str]]:
+    """Create dummy test data for each category.
+    The data format should be in JSON as:
+    {
         "sport": [
             "The football match ended with a dramatic penalty shootout",
-            "Tennis player wins her third Grand Slam title this year",
-            "Basketball team breaks record with 150 points in single game",
-            "Olympic swimmer sets new world record in 100m freestyle",
-            "Cricket world cup final attracts millions of viewers worldwide",
-        ],
-        "islamic": [
-            "Hadith collections provide guidance for daily Muslim life",
-            "Islamic scholars discuss the importance of Tafsir studies",
-            "Is it true that the biography of Prophet Muhammad offers valuable lessons?",
-        ],
-        "hukum": ["apa hukumnya makan kepiting?"],
-        "quran": [
-            "The interpretation of Quranic verses requires deep knowledge",
-            "pada ayat berapa nabi musa menerima wahyu di gunung sinai?",
-        ],
-        "hadits": [
-            "sebutkan hadits tentang keutamaan sedekah",
-            "apa kata Rasulullah tentang pentingnya ilmu? Dan diriwayatkan oleh siapa?",
-        ],
-        "finance": [
-            "Stock market reaches all-time high amid economic recovery",
-            "Central bank announces interest rate hike to combat inflation",
-            "Cryptocurrency regulations impact digital asset investments",
-            "Portfolio diversification strategies for long-term growth",
-            "Financial analysts predict recession in coming quarters",
-            "saham apa yang bagus untuk investasi jangka panjang?",
-        ],
-        "programming": [
-            "Python's async/await pattern improves concurrent programming",
-            "Machine learning frameworks simplify neural network implementation",
-            "Docker containers provide consistent deployment environments",
-            "Git branching strategies for effective team collaboration",
-            "API design patterns for scalable microservices architecture",
-            "buatkan kode python untuk menghitung faktorial",
-        ],
+            "Tennis player wins her third Grand Slam title this year"
+        ]
     }
+    """
+    # read file from data/classificaton.json
+    with open(SCRIPT_DIR + "/data/classification.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+        return data
 
 
 def format_text_for_model(text: str, model: str, is_category: bool = False) -> str:
@@ -222,16 +196,9 @@ def main():
     print(f"✓ Connected to Ollama at {args.ollama_url}")
     print(f"✓ Using model: {model}")
 
-    # Define categories
-    categories = [
-        "sport",
-        "islamic",
-        "finance",
-        "programming",
-        "hukum",
-        "hadits",
-        "quran",
-    ]
+    test_data = get_test_data()
+
+    categories = test_data.keys()
 
     # Create category embeddings
     print("\nCreating category embeddings...")
@@ -247,8 +214,6 @@ def main():
             print(f"❌ Error embedding category '{category}': {e}")
             return
 
-    # Get test data
-    test_data = create_test_data()
 
     # Run classification tests
     print("\n" + "=" * 60)
