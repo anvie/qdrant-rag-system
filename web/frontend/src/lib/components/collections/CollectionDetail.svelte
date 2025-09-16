@@ -472,6 +472,7 @@
           pageSize={pageSize}
           totalPages={totalPages}
           selectedRecords={selectedRecords}
+          collectionName={collectionName}
           on:delete={handleRecordsTableDelete}
           on:bulkDelete={handleRecordsTableBulkDelete}
           on:loadPage={handleRecordsTablePageChange}

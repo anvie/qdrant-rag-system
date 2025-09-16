@@ -689,6 +689,64 @@ async def add_records(
         raise HTTPException(status_code=500, detail=f"Failed to add records: {str(e)}")
 
 
+@router.get("/{collection_name}/records/{record_id}", response_model=CollectionRecord)
+async def get_collection_record(
+    collection_name: str, record_id: str, db: Session = Depends(get_db)
+):
+    """Get a specific record from a collection."""
+    try:
+        client = QdrantClient(url=settings.QDRANT_URL)
+
+        # Check if collection exists
+        try:
+            client.get_collection(collection_name)
+        except Exception:
+            raise HTTPException(
+                status_code=404, detail=f"Collection '{collection_name}' not found"
+            )
+
+        # Retrieve the record
+        try:
+            try:
+                a_record_id = int(record_id)
+            except ValueError:
+                a_record_id = record_id
+
+            records = client.retrieve(
+                collection_name=collection_name, ids=[a_record_id], with_payload=True
+            )
+            if not records:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Record '{record_id}' not found in collection '{collection_name}'",
+                )
+
+            record = records[0]
+            payload = record.payload or {}
+
+            return CollectionRecord(
+                id=str(record.id),
+                title=payload.get("title", ""),
+                content=payload.get("content", ""),
+                metadata=payload.get("metadata", {}),
+                created_at=payload.get("created_at"),
+            )
+
+        except Exception as e:
+            if "404" in str(e):
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Record '{record_id}' not found in collection '{collection_name}'",
+                )
+            raise
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        traceback.print_exception(type(e), e, e.__traceback__)
+        raise HTTPException(status_code=500, detail=f"Failed to get record: {str(e)}")
+
+
 @router.delete("/{collection_name}/records/{record_id}")
 async def delete_record(
     collection_name: str, record_id: str, db: Session = Depends(get_db)

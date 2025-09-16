@@ -4,6 +4,9 @@
   
   import Button from "../common/Button.svelte";
   import LoadingSpinner from "../common/LoadingSpinner.svelte";
+  import Modal from "../common/Modal.svelte";
+  
+  import { api } from "../../services/api";
   
   // Types
   interface CollectionRecord {
@@ -30,6 +33,7 @@
   export let pageSize = 20;
   export let totalPages = 1;
   export let selectedRecords: Set<string> = new Set();
+  export let collectionName: string = "";
 
   // Events
   const dispatch = createEventDispatcher<{
@@ -42,6 +46,9 @@
 
   // Local state
   let selectAll = false;
+  let showDetailModal = false;
+  let selectedRecord: CollectionRecord | null = null;
+  let detailLoading = false;
 
   // Reactive statements
   $: allRecordsSelected = records.length > 0 && records.every(r => selectedRecords.has(r.id));
@@ -87,6 +94,31 @@
   function truncateText(text: string, maxLength: number = 100): string {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
+  }
+
+  async function handleViewRecord(recordId: string) {
+    if (!collectionName) return;
+    
+    try {
+      detailLoading = true;
+      selectedRecord = await api.getCollectionRecord(collectionName, recordId);
+      showDetailModal = true;
+    } catch (error) {
+      console.error('Failed to load record details:', error);
+      alert('Failed to load record details. Please try again.');
+    } finally {
+      detailLoading = false;
+    }
+  }
+
+  function closeDetailModal() {
+    showDetailModal = false;
+    selectedRecord = null;
+  }
+
+  function formatMetadata(metadata: any): string {
+    if (!metadata || typeof metadata !== 'object') return 'No metadata';
+    return JSON.stringify(metadata, null, 2);
   }
 </script>
 
@@ -161,7 +193,7 @@
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Created
               </th>
-              <th class="w-24 px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="w-32 px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -191,15 +223,26 @@
                   {formatDate(record.created_at)}
                 </td>
                 <td class="px-4 py-4 text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteRecord(record.id)}
-                    class="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    ariaLabel={`Delete record: ${record.title}`}
-                  >
-                    <Icon icon="material-symbols:delete" class="w-4 h-4" />
-                  </Button>
+                  <div class="flex items-center justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewRecord(record.id)}
+                      class="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      ariaLabel={`View record: ${record.title}`}
+                    >
+                      <Icon icon="material-symbols:visibility" class="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteRecord(record.id)}
+                      class="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      ariaLabel={`Delete record: ${record.title}`}
+                    >
+                      <Icon icon="material-symbols:delete" class="w-4 h-4" />
+                    </Button>
+                  </div>
                 </td>
               </tr>
             {/each}
@@ -258,3 +301,74 @@
     {/if}
   </div>
 </div>
+
+<!-- Record Detail Modal -->
+<Modal 
+  show={showDetailModal}
+  title="Record Details" 
+  onClose={closeDetailModal}
+  size="lg"
+>
+    {#if detailLoading}
+      <div class="flex items-center justify-center py-8">
+        <LoadingSpinner size="md" />
+        <span class="ml-3 text-gray-600">Loading record details...</span>
+      </div>
+    {:else if selectedRecord}
+      <div class="space-y-6">
+        <!-- Record Header -->
+        <div class="border-b pb-4">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">
+            {selectedRecord.title}
+          </h3>
+          <div class="flex items-center text-sm text-gray-500">
+            <Icon icon="material-symbols:calendar-clock" class="w-4 h-4 mr-1" />
+            <span>ID: {selectedRecord.id}</span>
+            {#if selectedRecord.created_at}
+              <span class="mx-2">•</span>
+              <span>Created: {formatDate(selectedRecord.created_at)}</span>
+            {/if}
+          </div>
+        </div>
+
+        <!-- Content Section -->
+        <div>
+          <h4 class="text-sm font-medium text-gray-900 mb-3 flex items-center">
+            <Icon icon="material-symbols:description" class="w-4 h-4 mr-2" />
+            Content
+          </h4>
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <pre class="whitespace-pre-wrap text-sm text-gray-700 font-sans">{selectedRecord.content}</pre>
+          </div>
+        </div>
+
+        <!-- Metadata Section -->
+        {#if selectedRecord.metadata && Object.keys(selectedRecord.metadata).length > 0}
+          <div>
+            <h4 class="text-sm font-medium text-gray-900 mb-3 flex items-center">
+              <Icon icon="material-symbols:data-object" class="w-4 h-4 mr-2" />
+              Metadata
+            </h4>
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <pre class="whitespace-pre-wrap text-sm text-gray-700 font-mono text-xs overflow-auto max-h-64">{formatMetadata(selectedRecord.metadata)}</pre>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Actions -->
+        <div class="flex justify-end pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={closeDetailModal}
+          >
+            Close
+          </Button>
+        </div>
+      </div>
+    {:else}
+      <div class="text-center py-8">
+        <Icon icon="material-symbols:error" class="w-12 h-12 mx-auto text-gray-400" />
+        <p class="mt-2 text-gray-600">No record data available</p>
+      </div>
+    {/if}
+  </Modal>

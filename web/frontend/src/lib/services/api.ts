@@ -294,6 +294,16 @@ class ApiService {
     return response.data;
   }
 
+  async getCollectionRecord(
+    collectionName: string,
+    recordId: string
+  ): Promise<CollectionRecord> {
+    const response = await this.client.get<CollectionRecord>(
+      `/collections/${collectionName}/records/${recordId}`
+    );
+    return response.data;
+  }
+
   async deleteRecord(
     collectionName: string,
     recordId: string
