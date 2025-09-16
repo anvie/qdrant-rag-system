@@ -14,10 +14,11 @@ import os
 import argparse
 
 # Add the project root to Python path
-SCRIPT_DIR=os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(SCRIPT_DIR))
 
 from lib.embedding.client import OllamaEmbeddingClient
+
 
 def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
     """Calculate cosine similarity between two vectors."""
@@ -213,7 +214,6 @@ def main():
         except Exception as e:
             print(f"❌ Error embedding category '{category}': {e}")
             return
-
 
     # Run classification tests
     print("\n" + "=" * 60)
