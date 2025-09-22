@@ -11,7 +11,7 @@ import type {
   CategoryUpdate
 } from '../services/api';
 import { api } from '../services/api';
-import { notifications } from './notifications';
+import { notificationActions } from './notifications';
 
 // Store for categories
 export const categories = writable<CategoryResponse[]>([]);
@@ -50,7 +50,7 @@ export const classificationStore = {
       categories.set(data);
     } catch (error) {
       console.error('Failed to load categories:', error);
-      notifications.addError('Failed to load categories');
+      notificationActions.error('Failed to load categories');
     } finally {
       isLoadingCategories.set(false);
     }
@@ -62,11 +62,11 @@ export const classificationStore = {
     try {
       const newCategory = await api.createCategory(categoryData);
       categories.update(cats => [...cats, newCategory]);
-      notifications.addSuccess(`Category "${newCategory.name}" created successfully`);
+      notificationActions.success(`Category "${newCategory.name}" created successfully`);
       return true;
     } catch (error) {
       console.error('Failed to create category:', error);
-      notifications.addError('Failed to create category');
+      notificationActions.error('Failed to create category');
       return false;
     } finally {
       isCreatingCategory.set(false);
@@ -81,11 +81,11 @@ export const classificationStore = {
       categories.update(cats =>
         cats.map(cat => cat.id === categoryId ? updatedCategory : cat)
       );
-      notifications.addSuccess(`Category "${updatedCategory.name}" updated successfully`);
+      notificationActions.success(`Category "${updatedCategory.name}" updated successfully`);
       return true;
     } catch (error) {
       console.error('Failed to update category:', error);
-      notifications.addError('Failed to update category');
+      notificationActions.error('Failed to update category');
       return false;
     } finally {
       isUpdatingCategory.set(false);
@@ -97,11 +97,11 @@ export const classificationStore = {
     try {
       await api.deleteCategory(categoryId);
       categories.update(cats => cats.filter(cat => cat.id !== categoryId));
-      notifications.addSuccess('Category deleted successfully');
+      notificationActions.success('Category deleted successfully');
       return true;
     } catch (error) {
       console.error('Failed to delete category:', error);
-      notifications.addError('Failed to delete category');
+      notificationActions.error('Failed to delete category');
       return false;
     }
   },
@@ -109,7 +109,7 @@ export const classificationStore = {
   // Classify text
   async classifyText(text: string, model?: string, topK?: number): Promise<boolean> {
     if (!text.trim()) {
-      notifications.addWarning('Please enter text to classify');
+      notificationActions.warning('Please enter text to classify');
       return false;
     }
 
@@ -124,7 +124,7 @@ export const classificationStore = {
       return true;
     } catch (error) {
       console.error('Failed to classify text:', error);
-      notifications.addError('Failed to classify text');
+      notificationActions.error('Failed to classify text');
       classificationResults.set(null);
       return false;
     } finally {
@@ -150,7 +150,7 @@ export const classificationStore = {
       }
     } catch (error) {
       console.error('Failed to load models:', error);
-      notifications.addError('Failed to load available models');
+      notificationActions.error('Failed to load available models');
     } finally {
       isLoadingModels.set(false);
     }

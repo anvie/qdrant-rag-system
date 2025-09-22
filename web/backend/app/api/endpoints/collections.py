@@ -420,7 +420,7 @@ async def list_available_embedding_models():
         result = []
         for model in models:
             # Check availability for each model
-            is_available, status = registry.check_model_availability(model["name"])
+            is_available = registry.is_model_available(model["name"])
 
             result.append(
                 EmbeddingModelResponse(
@@ -459,7 +459,7 @@ async def list_recommended_embedding_models():
         result = []
         for model in models:
             # Check availability for each model
-            is_available, status = registry.check_model_availability(model["name"])
+            is_available = registry.is_model_available(model["name"])
 
             result.append(
                 EmbeddingModelResponse(

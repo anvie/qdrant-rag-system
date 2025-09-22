@@ -6,9 +6,12 @@
     isCreatingCategory,
     isUpdatingCategory,
     classificationStore,
-    hasCategories
+    hasCategories,
+    classificationModels,
+    isLoadingModels
   } from '../../stores/classification';
   import type { CategoryResponse, CategoryCreate, CategoryUpdate } from '../../services/api';
+  import Modal from '../common/Modal.svelte';
 
   // Form data
   let showForm = false;
@@ -17,6 +20,13 @@
     name: '',
     sample_texts: [''],
     model: ''
+  };
+
+  // Success modal state
+  let showSuccessModal = false;
+  let successModalData = {
+    category: null as CategoryResponse | null,
+    isUpdate: false
   };
 
   // Add new sample text field
@@ -88,6 +98,14 @@
     }
 
     if (success) {
+      // Show success modal with category data
+      successModalData = {
+        category: editingCategory ?
+          $categories.find(c => c.id === editingCategory.id) || null :
+          $categories[$categories.length - 1] || null,
+        isUpdate: !!editingCategory
+      };
+      showSuccessModal = true;
       resetForm();
     }
   }
@@ -99,9 +117,20 @@
     }
   }
 
-  // Load categories on mount
+  // Success modal actions
+  function createAnotherCategory() {
+    showSuccessModal = false;
+    showForm = true;
+  }
+
+  function closeSuccessModal() {
+    showSuccessModal = false;
+  }
+
+  // Load data on mount
   onMount(() => {
     classificationStore.loadCategories();
+    classificationStore.loadModels();
   });
 </script>
 
@@ -144,14 +173,30 @@
           <label for="model" class="block text-sm font-medium text-gray-700 mb-1">
             Embedding Model (Optional)
           </label>
-          <input
-            id="model"
-            type="text"
-            bind:value={formData.model}
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="e.g., embeddinggemma:latest"
-          />
-          <p class="text-xs text-gray-500 mt-1">Leave empty to use default model</p>
+          {#if $isLoadingModels}
+            <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 flex items-center">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+              <span class="text-sm text-gray-500">Loading models...</span>
+            </div>
+          {:else}
+            <select
+              id="model"
+              bind:value={formData.model}
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Use default model</option>
+              {#each $classificationModels as model}
+                <option value={model.name}>{model.name}</option>
+              {/each}
+            </select>
+          {/if}
+          <p class="text-xs text-gray-500 mt-1">
+            {#if $classificationModels.length === 0 && !$isLoadingModels}
+              No models available - using default
+            {:else}
+              Select a model or leave empty to use default
+            {/if}
+          </p>
         </div>
 
         <!-- Sample Texts -->
@@ -283,3 +328,71 @@
     </div>
   {/if}
 </div>
+
+<!-- Success Modal -->
+<Modal
+  bind:show={showSuccessModal}
+  title={successModalData.isUpdate ? "Category Updated" : "Category Created"}
+  size="md"
+  showFooter={true}
+  on:close={closeSuccessModal}
+>
+  <div class="text-center py-4">
+    <!-- Success Icon -->
+    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+      <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+      </svg>
+    </div>
+
+    <!-- Success Message -->
+    <h3 class="text-lg font-medium text-gray-900 mb-2">
+      {successModalData.isUpdate ? "Successfully Updated!" : "Successfully Created!"}
+    </h3>
+
+    {#if successModalData.category}
+      <div class="bg-gray-50 rounded-lg p-4 mb-4">
+        <div class="text-left space-y-2">
+          <div class="flex justify-between">
+            <span class="text-sm font-medium text-gray-700">Category:</span>
+            <span class="text-sm text-gray-900">{successModalData.category.name}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-sm font-medium text-gray-700">Sample texts:</span>
+            <span class="text-sm text-gray-900">{successModalData.category.sample_count}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-sm font-medium text-gray-700">Model:</span>
+            <span class="text-sm text-gray-900">{successModalData.category.model_name || 'Default'}</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-sm text-gray-600 mb-6">
+        {successModalData.isUpdate
+          ? "Your category has been updated and is ready for classification."
+          : "Your category has been created and is ready for classification."}
+      </p>
+    {/if}
+  </div>
+
+  <!-- Modal Footer Buttons -->
+  <div slot="footer" class="flex gap-3 justify-end">
+    {#if !successModalData.isUpdate}
+      <button
+        type="button"
+        on:click={createAnotherCategory}
+        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        Create Another
+      </button>
+    {/if}
+    <button
+      type="button"
+      on:click={closeSuccessModal}
+      class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+    >
+      Close
+    </button>
+  </div>
+</Modal>
