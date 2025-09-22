@@ -90,6 +90,54 @@ export interface ModelsResponse {
   total_models: number;
 }
 
+// Classification interfaces
+export interface CategoryCreate {
+  name: string;
+  sample_texts: string[];
+  model?: string;
+}
+
+export interface CategoryUpdate {
+  name?: string;
+  sample_texts?: string[];
+  model?: string;
+}
+
+export interface CategoryResponse {
+  id: number;
+  name: string;
+  sample_texts: string[];
+  model_name?: string;
+  sample_count: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ClassificationRequest {
+  text: string;
+  model?: string;
+  top_k?: number;
+}
+
+export interface ClassificationResult {
+  category_id: number;
+  category_name: string;
+  confidence: number;
+  sample_count: number;
+}
+
+export interface ClassificationResponse {
+  text: string;
+  model: string;
+  results: ClassificationResult[];
+}
+
+export interface ClassificationModelInfo {
+  name: string;
+  size?: number;
+  modified?: string;
+}
+
 export interface SearchRequest {
   query: string;
   collection?: string;
@@ -497,6 +545,37 @@ class ApiService {
     const response = await this.client.get<{ conversations: ChatConversation[] }>(
       "/chat/conversations",
     );
+    return response.data;
+  }
+
+  // Classification endpoints
+  async getCategories(): Promise<CategoryResponse[]> {
+    const response = await this.client.get<CategoryResponse[]>("/classification/categories");
+    return response.data;
+  }
+
+  async createCategory(data: CategoryCreate): Promise<CategoryResponse> {
+    const response = await this.client.post<CategoryResponse>("/classification/categories", data);
+    return response.data;
+  }
+
+  async updateCategory(categoryId: number, data: CategoryUpdate): Promise<CategoryResponse> {
+    const response = await this.client.put<CategoryResponse>(`/classification/categories/${categoryId}`, data);
+    return response.data;
+  }
+
+  async deleteCategory(categoryId: number): Promise<{ message: string }> {
+    const response = await this.client.delete<{ message: string }>(`/classification/categories/${categoryId}`);
+    return response.data;
+  }
+
+  async classifyText(data: ClassificationRequest): Promise<ClassificationResponse> {
+    const response = await this.client.post<ClassificationResponse>("/classification/classify", data);
+    return response.data;
+  }
+
+  async getClassificationModels(): Promise<ClassificationModelInfo[]> {
+    const response = await this.client.get<ClassificationModelInfo[]>("/classification/models");
     return response.data;
   }
 

@@ -38,6 +38,13 @@
       description: "RAG Chat interface",
       disabled: false,
     },
+    {
+      id: "classification",
+      label: "Classification",
+      icon: "material-symbols:category",
+      description: "Text classification",
+      disabled: false,
+    },
   ];
 
   const settingsItems = [

@@ -21,6 +21,11 @@
   // Collection components
   import CollectionDetail from "./lib/components/collections/CollectionDetail.svelte";
 
+  // Classification components
+  import CategoryManager from "./lib/components/classification/CategoryManager.svelte";
+  import ClassificationTester from "./lib/components/classification/ClassificationTester.svelte";
+  import ClassificationResults from "./lib/components/classification/ClassificationResults.svelte";
+
   // Common components
   import Card from "./lib/components/common/Card.svelte";
   import Button from "./lib/components/common/Button.svelte";
@@ -51,6 +56,7 @@
       "collections",
       "search",
       "chat",
+      "classification",
       "settings",
     ];
     return { page: validPages.includes(hash) ? hash : "dashboard" };
@@ -139,6 +145,7 @@
     dashboard: "Dashboard",
     collections: "Collections",
     "collection-detail": "Collection Details",
+    classification: "Classification",
     search: "Search",
     chat: "Chat",
     settings: "Settings",
@@ -221,6 +228,8 @@
                 Search through your vectors
               {:else if currentPage === "chat"}
                 RAG-powered chat interface
+              {:else if currentPage === "classification"}
+                Text classification using embeddings
               {:else}
                 System configuration
               {/if}
@@ -353,6 +362,22 @@
             showSidebar={true}
             autoFocus={true}
           />
+        </div>
+      {:else if currentPage === "classification"}
+        <!-- Classification Page -->
+        <div class="space-y-6">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left Column: Category Management -->
+            <div class="space-y-6">
+              <CategoryManager />
+            </div>
+
+            <!-- Right Column: Classification Testing -->
+            <div class="space-y-6">
+              <ClassificationTester />
+              <ClassificationResults />
+            </div>
+          </div>
         </div>
       {:else}
         <!-- Settings Page (Placeholder) -->

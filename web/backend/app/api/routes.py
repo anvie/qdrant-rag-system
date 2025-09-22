@@ -3,7 +3,7 @@ API route definitions
 """
 
 from fastapi import APIRouter
-from api.endpoints import collections, indexing, search, chat, documents, system
+from api.endpoints import collections, indexing, search, chat, documents, system, classification
 
 # Create main router
 router = APIRouter()
@@ -20,3 +20,5 @@ router.include_router(search.router, prefix="/search", tags=["search"])
 router.include_router(chat.router, prefix="/chat", tags=["chat"])
 
 router.include_router(documents.router, prefix="/documents", tags=["documents"])
+
+router.include_router(classification.router, prefix="/classification", tags=["classification"])
