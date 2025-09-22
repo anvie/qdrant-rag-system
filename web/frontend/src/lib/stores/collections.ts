@@ -85,7 +85,7 @@ export const collectionsStats = derived(collectionsStore, ($collections) => {
 
   $collections.collections.forEach((collection) => {
     stats.totalPoints += collection.points_count;
-    stats.totalVectors += collection.vectors_count;
+    stats.totalVectors += collection.points_count; // Use points_count for vectors
     if (collection.status === "ready" || collection.status === "active") {
       stats.activeCollections++;
     }

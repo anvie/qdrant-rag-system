@@ -289,19 +289,11 @@
             />
 
             <StatsCard
-              title="Total Points"
+              title="Total Vectors"
               value={$collectionsStats.totalPoints}
-              subtitle="Data points"
-              icon="material-symbols:star"
-              color="purple"
-            />
-
-            <StatsCard
-              title="Vectors"
-              value={$collectionsStats.totalVectors}
               subtitle="Embeddings"
               icon="material-symbols:bar-chart"
-              color="yellow"
+              color="purple"
             />
           </div>
 

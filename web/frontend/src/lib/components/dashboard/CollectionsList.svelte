@@ -173,19 +173,11 @@
         compact={compact}
       />
       <StatsCard
-        title="Total Points"
-        value={$collectionsStats.totalPoints}
-        subtitle="All collections"
-        icon={pointsIcon}
-        color="purple"
-        compact={compact}
-      />
-      <StatsCard
         title="Total Vectors"
-        value={$collectionsStats.totalVectors}
+        value={$collectionsStats.totalPoints}
         subtitle="Embedded data"
         icon={vectorIcon}
-        color="yellow"
+        color="purple"
         compact={compact}
       />
     </div>
@@ -364,16 +356,10 @@
               </div>
 
               <!-- Collection stats -->
-              <div class="grid grid-cols-2 gap-4 mb-4">
+              <div class="flex justify-center mb-4">
                 <div class="text-center">
                   <div class="text-2xl font-bold text-purple-600">
                     {formatNumber(collection.points_count)}
-                  </div>
-                  <div class="text-sm text-gray-600">Points</div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-blue-600">
-                    {formatNumber(collection.vectors_count)}
                   </div>
                   <div class="text-sm text-gray-600">Vectors</div>
                 </div>

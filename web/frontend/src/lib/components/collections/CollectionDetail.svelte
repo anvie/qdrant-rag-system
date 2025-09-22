@@ -343,29 +343,16 @@
         </div>
       {:else if collectionStats}
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <!-- Points Count -->
+          <!-- Vectors Count -->
           <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-sm text-purple-600 font-medium">Total Records</p>
+                <p class="text-sm text-purple-600 font-medium">Total Vectors</p>
                 <p class="text-2xl font-bold text-purple-700">
                   {formatNumber(collectionStats.points_count)}
                 </p>
               </div>
-              <Icon icon="material-symbols:star" class="w-8 h-8 text-purple-400" />
-            </div>
-          </div>
-          
-          <!-- Vectors Count -->
-          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm text-blue-600 font-medium">Total Vectors</p>
-                <p class="text-2xl font-bold text-blue-700">
-                  {formatNumber(collectionStats.vectors_count)}
-                </p>
-              </div>
-              <Icon icon="material-symbols:bar-chart" class="w-8 h-8 text-blue-400" />
+              <Icon icon="material-symbols:bar-chart" class="w-8 h-8 text-purple-400" />
             </div>
           </div>
           
