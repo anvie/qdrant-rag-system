@@ -1,3 +1,4 @@
 snowflake-id==1.0.2
 qdrant-client
 requests
+python-dotenv

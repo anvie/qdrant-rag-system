@@ -11,6 +11,13 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 from dataclasses import dataclass, field
 
+# Try to import dotenv, but don't fail if it's not available
+try:
+    from dotenv import load_dotenv
+    DOTENV_AVAILABLE = True
+except ImportError:
+    DOTENV_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -138,7 +145,23 @@ class RAGConfig:
 
     @classmethod
     def from_env(cls) -> "RAGConfig":
-        """Create complete config from environment variables."""
+        """Create complete config from environment variables.
+
+        If python-dotenv is available, loads .env file first to make its
+        variables available as environment variables.
+        """
+        # Load .env file if dotenv is available
+        if DOTENV_AVAILABLE:
+            # Look for .env in current directory and parent directories
+            env_path = Path.cwd() / ".env"
+            if not env_path.exists():
+                # Try parent directory (common in project structures)
+                env_path = Path.cwd().parent / ".env"
+
+            if env_path.exists():
+                load_dotenv(env_path, override=False)
+                logger.debug(f"Loaded environment variables from {env_path}")
+
         return cls(
             database=DatabaseConfig.from_env(),
             embedding=EmbeddingConfig.from_env(),
